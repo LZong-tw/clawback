@@ -189,7 +189,6 @@ This project went through **9 rounds of adversarial design review** before a sin
 
 ## Related
 
-- **[claude-code-showcase](https://github.com/LZong-tw/claude-code-showcase)** -- Comprehensive Claude Code project configuration example with hooks, skills, agents, and workflows
 - **[production-verify](https://github.com/LZong-tw/production-verify)** -- Production verification framework (smoke tests + architecture proofs)
 - **[Claude Code Hooks Guide](https://code.claude.com/docs/en/hooks-guide)** -- Official hooks documentation
 
