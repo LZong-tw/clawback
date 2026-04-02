@@ -77,14 +77,11 @@ function buildHooksConfig(hooksDir, extras = []) {
  * Check if a hook entry is from clawback (by command path).
  */
 function isClawbackHook(hookEntry) {
+  // Match both .cjs (current) and .js (legacy) to clean up old installs
+  const HOOK_NAMES = ['protect-files', 'post-edit', 'stop-verify', 'post-compact-reinject', 'notification', 'guard-read'];
   return hookEntry.hooks?.some(h =>
-    h.command && (
-      h.command.includes('protect-files.cjs') ||
-      h.command.includes('post-edit.cjs') ||
-      h.command.includes('stop-verify.cjs') ||
-      h.command.includes('post-compact-reinject.cjs') ||
-      h.command.includes('notification.cjs') ||
-      h.command.includes('guard-read.cjs')
+    h.command && HOOK_NAMES.some(name =>
+      h.command.includes(name + '.cjs') || h.command.includes(name + '.js')
     )
   );
 }
