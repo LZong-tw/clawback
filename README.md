@@ -21,7 +21,7 @@ Anthropic engineers get a Claude that checks whether generated code actually com
 
 ## What It Does
 
-One `node install.js` and your Claude Code gets 5 hooks that fire automatically:
+One `node install.cjs` and your Claude Code gets 5 hooks that fire automatically:
 
 | Hook | Event | What It Does |
 |------|-------|--------------|
@@ -39,7 +39,7 @@ This is the core feature. When Claude tries to complete a task:
 
 ```
 Claude: "Done! I've implemented the feature."
-  └→ stop-verify.js fires
+  └→ stop-verify fires
        ├→ tsc --noEmit (60s timeout)
        ├→ eslint (15s timeout)
        ├→ errors scoped to files YOU changed (not pre-existing debt)
@@ -72,7 +72,7 @@ Clawback auto-detects your project. You don't configure anything.
 ```bash
 git clone https://github.com/LZong-tw/clawback.git
 cd clawback
-node install.js
+node install.cjs
 ```
 
 That's it. Open Claude Code, type `/hooks` to verify.
@@ -80,7 +80,7 @@ That's it. Open Claude Code, type `/hooks` to verify.
 ### Options
 
 ```bash
-node install.js --with-read-guard    # Also block reading ~/.ssh, ~/.aws, ~/.gnupg
+node install.cjs --with-read-guard    # Also block reading ~/.ssh, ~/.aws, ~/.gnupg
 ```
 
 ### What it installs
@@ -93,20 +93,20 @@ node install.js --with-read-guard    # Also block reading ~/.ssh, ~/.aws, ~/.gnu
 
 ```bash
 cd clawback
-node uninstall.js    # Clean removal, restores your original settings
+node uninstall.cjs    # Clean removal, restores your original settings
 ```
 
 ## Design Principles
 
-**Hooks are 100% stack-agnostic.** Every hook delegates to `detect-stack.js` -- the single file that knows about languages. Adding Java support means editing one file, not five.
+**Hooks are 100% stack-agnostic.** Every hook delegates to `detect-stack.cjs` -- the single file that knows about languages. Adding Java support means editing one file, not five.
 
 **Zero external dependencies.** Node.js built-in modules only. No `node_modules`, no supply chain risk, no version conflicts.
 
-**Cross-platform.** Windows (Git Bash / MINGW64), macOS, Linux. Path handling via `path.join()`, subprocess safety via platform-aware `exec.js`.
+**Cross-platform.** Windows (Git Bash / MINGW64), macOS, Linux. Path handling via `path.join()`, subprocess safety via platform-aware `exec.cjs`.
 
-**Idempotent.** Run `node install.js` ten times. You get one set of hooks, not ten duplicates.
+**Idempotent.** Run `node install.cjs` ten times. You get one set of hooks, not ten duplicates.
 
-**Safe to remove.** `node uninstall.js` reverses everything. Your settings go back to how they were.
+**Safe to remove.** `node uninstall.cjs` reverses everything. Your settings go back to how they were.
 
 ## Adding Custom Stacks
 
@@ -137,13 +137,13 @@ Your local overrides take priority over built-in detection.
 ```
 ~/.claude/hooks/
 ├── lib/
-│   ├── detect-stack.js         ← sole language-aware module
-│   └── exec.js                 ← cross-platform safe subprocess
-├── protect-files.js            ← PreToolUse (Edit|Write)
-├── post-edit.js                ← PostToolUse (Edit|Write)
-├── stop-verify.js              ← Stop (circuit breaker)
-├── post-compact-reinject.js    ← PostCompact
-├── notification.js             ← Notification
+│   ├── detect-stack.cjs        ← sole language-aware module
+│   └── exec.cjs                ← cross-platform safe subprocess
+├── protect-files.cjs           ← PreToolUse (Edit|Write)
+├── post-edit.cjs               ← PostToolUse (Edit|Write)
+├── stop-verify.cjs             ← Stop (circuit breaker)
+├── post-compact-reinject.cjs   ← PostCompact
+├── notification.cjs            ← Notification
 └── clawback-manifest.json      ← tracks what was installed
 ```
 
@@ -158,9 +158,9 @@ Your local overrides take priority over built-in detection.
 │  → Claude follows these. Usually. Hopefully.        │
 ├─────────────────────────────────────────────────────┤
 │  Hooks (mechanical enforcement)                     │
-│  protect-files.js → BLOCKED. Period.                │
-│  stop-verify.js   → tsc fails? Can't stop. Period.  │
-│  post-edit.js     → Formatted. Linted. Every time.  │
+│  protect-files  → BLOCKED. Period.                   │
+│  stop-verify    → tsc fails? Can't stop. Period.     │
+│  post-edit      → Formatted. Linted. Every time.     │
 │  → These fire whether Claude wants them to or not.  │
 └─────────────────────────────────────────────────────┘
 ```
@@ -196,8 +196,8 @@ This project went through **9 rounds of adversarial design review** before a sin
 
 PRs welcome. The architecture is designed for contribution:
 
-- **New language support?** Edit `lib/detect-stack.js` only. No hook changes needed.
-- **New hook?** Add to `hooks/`, register in `install.js`. Existing hooks untouched.
+- **New language support?** Edit `lib/detect-stack.cjs` only. No hook changes needed.
+- **New hook?** Add to `hooks/`, register in `install.cjs`. Existing hooks untouched.
 - **Bug fix?** 39 tests protect you from regressions.
 
 ## Author
