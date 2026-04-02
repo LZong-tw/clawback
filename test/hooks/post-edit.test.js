@@ -6,7 +6,7 @@ const { runHook, parseHookOutput } = require('../helpers');
 
 describe('post-edit', () => {
   it('exits 0 silently for non-source files', () => {
-    const { exitCode, stdout } = runHook('hooks/post-edit.js', {
+    const { exitCode, stdout } = runHook('hooks/post-edit.cjs', {
       hook_event_name: 'PostToolUse',
       tool_name: 'Edit',
       tool_input: { file_path: '/project/README.md' },
@@ -18,7 +18,7 @@ describe('post-edit', () => {
   });
 
   it('exits 0 silently when no stack detected', () => {
-    const { exitCode, stdout } = runHook('hooks/post-edit.js', {
+    const { exitCode, stdout } = runHook('hooks/post-edit.cjs', {
       hook_event_name: 'PostToolUse',
       tool_name: 'Write',
       tool_input: { file_path: '/tmp/random-dir/app.ts' },
@@ -28,7 +28,7 @@ describe('post-edit', () => {
   });
 
   it('exits 0 for missing file_path', () => {
-    const { exitCode } = runHook('hooks/post-edit.js', {
+    const { exitCode } = runHook('hooks/post-edit.cjs', {
       hook_event_name: 'PostToolUse',
       tool_name: 'Edit',
       tool_input: {},

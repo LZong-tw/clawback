@@ -19,19 +19,19 @@ describe('install', () => {
   });
 
   it('creates hooks directory and copies files', () => {
-    const { install } = require('../install');
+    const { install } = require('../install.cjs');
     install({ home: fakeHome });
-    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'protect-files.js')));
-    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'post-edit.js')));
-    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'stop-verify.js')));
-    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'post-compact-reinject.js')));
-    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'notification.js')));
-    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'lib', 'detect-stack.js')));
-    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'lib', 'exec.js')));
+    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'protect-files.cjs')));
+    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'post-edit.cjs')));
+    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'stop-verify.cjs')));
+    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'post-compact-reinject.cjs')));
+    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'notification.cjs')));
+    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'lib', 'detect-stack.cjs')));
+    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'lib', 'exec.cjs')));
   });
 
   it('creates settings.json with hooks config', () => {
-    const { install } = require('../install');
+    const { install } = require('../install.cjs');
     install({ home: fakeHome });
     const settings = JSON.parse(fs.readFileSync(path.join(fakeHome, '.claude', 'settings.json'), 'utf8'));
     assert.ok(settings.hooks);
@@ -45,7 +45,7 @@ describe('install', () => {
   it('merges with existing settings.json', () => {
     const existing = { env: { FOO: 'bar' }, hooks: { Stop: [{ hooks: [{ type: 'command', command: 'echo test' }] }] } };
     fs.writeFileSync(path.join(fakeHome, '.claude', 'settings.json'), JSON.stringify(existing));
-    const { install } = require('../install');
+    const { install } = require('../install.cjs');
     install({ home: fakeHome });
     const settings = JSON.parse(fs.readFileSync(path.join(fakeHome, '.claude', 'settings.json'), 'utf8'));
     assert.equal(settings.env.FOO, 'bar'); // preserved
@@ -53,7 +53,7 @@ describe('install', () => {
   });
 
   it('is idempotent (no duplicate hooks on re-install)', () => {
-    const { install } = require('../install');
+    const { install } = require('../install.cjs');
     install({ home: fakeHome });
     install({ home: fakeHome });
     const settings = JSON.parse(fs.readFileSync(path.join(fakeHome, '.claude', 'settings.json'), 'utf8'));
@@ -66,7 +66,7 @@ describe('install', () => {
   });
 
   it('installs CLAUDE.md with section markers', () => {
-    const { install } = require('../install');
+    const { install } = require('../install.cjs');
     install({ home: fakeHome });
     const content = fs.readFileSync(path.join(fakeHome, '.claude', 'CLAUDE.md'), 'utf8');
     assert.ok(content.includes('<!-- clawback:v1:begin -->'));
@@ -75,7 +75,7 @@ describe('install', () => {
 
   it('preserves existing CLAUDE.md content', () => {
     fs.writeFileSync(path.join(fakeHome, '.claude', 'CLAUDE.md'), '# My Custom Rules\n\nDo things my way.\n');
-    const { install } = require('../install');
+    const { install } = require('../install.cjs');
     install({ home: fakeHome });
     const content = fs.readFileSync(path.join(fakeHome, '.claude', 'CLAUDE.md'), 'utf8');
     assert.ok(content.includes('# My Custom Rules'));
@@ -83,7 +83,7 @@ describe('install', () => {
   });
 
   it('writes manifest', () => {
-    const { install } = require('../install');
+    const { install } = require('../install.cjs');
     install({ home: fakeHome });
     assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'clawback-manifest.json')));
     const manifest = JSON.parse(fs.readFileSync(path.join(fakeHome, '.claude', 'hooks', 'clawback-manifest.json'), 'utf8'));

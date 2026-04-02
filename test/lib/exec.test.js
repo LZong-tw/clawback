@@ -3,7 +3,7 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { safeExec, ClawbackExecError } = require('../../lib/exec');
+const { safeExec, ClawbackExecError } = require('../../lib/exec.cjs');
 
 describe('safeExec', () => {
   it('executes a command and returns Buffer', () => {
@@ -28,7 +28,7 @@ describe('safeExec', () => {
   });
 
   it('throws ClawbackExecError for unsafe args on win32', () => {
-    const { validateArgs } = require('../../lib/exec');
+    const { validateArgs } = require('../../lib/exec.cjs');
     assert.throws(
       () => validateArgs(['--write', 'foo & bar.ts']),
       (err) => err instanceof ClawbackExecError && err.skipped === true
@@ -36,7 +36,7 @@ describe('safeExec', () => {
   });
 
   it('allows safe args in validation', () => {
-    const { validateArgs } = require('../../lib/exec');
+    const { validateArgs } = require('../../lib/exec.cjs');
     assert.doesNotThrow(() => validateArgs(['--write', 'src/app.ts']));
     assert.doesNotThrow(() => validateArgs(['--noEmit']));
   });

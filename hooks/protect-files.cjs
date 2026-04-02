@@ -8,11 +8,11 @@ let _detectStack;
 function getDetectStack() {
   if (!_detectStack) {
     try {
-      _detectStack = require(path.join(__dirname, 'lib', 'detect-stack.js')).detectStack;
+      _detectStack = require(path.join(__dirname, 'lib', 'detect-stack.cjs')).detectStack;
     } catch {
       // During testing, lib/ is at a different relative path
       try {
-        _detectStack = require(path.join(__dirname, '..', 'lib', 'detect-stack.js')).detectStack;
+        _detectStack = require(path.join(__dirname, '..', 'lib', 'detect-stack.cjs')).detectStack;
       } catch {
         _detectStack = () => ({ lockfiles: [] });
       }

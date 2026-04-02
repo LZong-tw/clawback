@@ -26,12 +26,12 @@ describe('detectStack', () => {
   afterEach(() => {
     if (tempDir) cleanTempProject(tempDir);
     // Clear require cache between tests
-    delete require.cache[require.resolve('../../lib/detect-stack')];
+    delete require.cache[require.resolve('../../lib/detect-stack.cjs')];
   });
 
   it('returns all nulls for empty directory', () => {
     tempDir = makeTempProject({});
-    const { detectStack } = require('../../lib/detect-stack');
+    const { detectStack } = require('../../lib/detect-stack.cjs');
     const result = detectStack(tempDir);
     assert.equal(result.typecheck, null);
     assert.equal(result.lint, null);
@@ -48,7 +48,7 @@ describe('detectStack', () => {
       'tsconfig.json': '{}',
       'package.json': '{"scripts":{"lint":"eslint ."}}',
     });
-    const { detectStack } = require('../../lib/detect-stack');
+    const { detectStack } = require('../../lib/detect-stack.cjs');
     const result = detectStack(tempDir);
     assert.ok(Array.isArray(result.lockfiles));
     assert.ok(Array.isArray(result.sourceExtensions));
@@ -60,7 +60,7 @@ describe('detectStack', () => {
       'package.json': '{}',
       'pnpm-lock.yaml': '',
     });
-    const { detectStack } = require('../../lib/detect-stack');
+    const { detectStack } = require('../../lib/detect-stack.cjs');
     const result = detectStack(tempDir);
     assert.equal(result.pkg_mgr, 'pnpm');
     assert.ok(result.lockfiles.includes('pnpm-lock.yaml'));
@@ -71,7 +71,7 @@ describe('detectStack', () => {
       'tsconfig.json': '{}',
       'src/components/foo.ts': '',
     });
-    const { detectStack } = require('../../lib/detect-stack');
+    const { detectStack } = require('../../lib/detect-stack.cjs');
     const subDir = path.join(tempDir, 'src', 'components');
     const result = detectStack(subDir);
     assert.ok(result.sourceExtensions.includes('.ts'));
@@ -79,7 +79,7 @@ describe('detectStack', () => {
 
   it('returns Go stack for go.mod', () => {
     tempDir = makeTempProject({ 'go.mod': 'module example.com/foo' });
-    const { detectStack } = require('../../lib/detect-stack');
+    const { detectStack } = require('../../lib/detect-stack.cjs');
     const result = detectStack(tempDir);
     assert.ok(result.sourceExtensions.includes('.go'));
     assert.ok(result.lockfiles.includes('go.sum'));

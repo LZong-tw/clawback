@@ -11,7 +11,7 @@ describe('post-compact-reinject', () => {
   it('exits 0 with no output for non-git directory', () => {
     const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clawback-test-'));
     try {
-      const { exitCode, stdout } = runHook('hooks/post-compact-reinject.js', {
+      const { exitCode, stdout } = runHook('hooks/post-compact-reinject.cjs', {
         hook_event_name: 'PostCompact',
         cwd: tmpDir,
       }, { CLAUDE_PROJECT_DIR: tmpDir });
@@ -22,7 +22,7 @@ describe('post-compact-reinject', () => {
   });
 
   it('truncateWithSummary truncates long text correctly', () => {
-    const { truncateWithSummary } = require('../../hooks/post-compact-reinject.js');
+    const { truncateWithSummary } = require('../../hooks/post-compact-reinject.cjs');
     assert.ok(typeof truncateWithSummary === 'function', 'truncateWithSummary must be exported');
 
     const longText = 'line\n'.repeat(1000);

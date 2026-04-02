@@ -8,11 +8,11 @@ function getModules() {
     const libDir = [
       path.join(__dirname, 'lib'),
       path.join(__dirname, '..', 'lib'),
-    ].find(d => { try { require(path.join(d, 'detect-stack.js')); return true; } catch { return false; } });
+    ].find(d => { try { require(path.join(d, 'detect-stack.cjs')); return true; } catch { return false; } });
 
     if (libDir) {
-      _detectStack = require(path.join(libDir, 'detect-stack.js')).detectStack;
-      _safeExec = require(path.join(libDir, 'exec.js')).safeExec;
+      _detectStack = require(path.join(libDir, 'detect-stack.cjs')).detectStack;
+      _safeExec = require(path.join(libDir, 'exec.cjs')).safeExec;
     } else {
       _detectStack = () => ({ format: null, lint: null, sourceExtensions: [] });
       _safeExec = () => Buffer.from('');

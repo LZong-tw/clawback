@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
-const { isClawbackHook, MARKER_BEGIN, MARKER_END } = require('./install');
+const { isClawbackHook, MARKER_BEGIN, MARKER_END } = require('./install.cjs');
 
 /**
  * Remove clawback hooks from settings.json.

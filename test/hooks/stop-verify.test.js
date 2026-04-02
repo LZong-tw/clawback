@@ -22,7 +22,7 @@ describe('stop-verify', () => {
   });
 
   it('exits 0 when stop_hook_active is true', () => {
-    const { exitCode, stdout } = runHook('hooks/stop-verify.js', {
+    const { exitCode, stdout } = runHook('hooks/stop-verify.cjs', {
       hook_event_name: 'Stop',
       stop_hook_active: true,
       session_id: 'test-session-1',
@@ -35,7 +35,7 @@ describe('stop-verify', () => {
   });
 
   it('exits 0 when no stack detected', () => {
-    const { exitCode, stdout } = runHook('hooks/stop-verify.js', {
+    const { exitCode, stdout } = runHook('hooks/stop-verify.cjs', {
       hook_event_name: 'Stop',
       stop_hook_active: false,
       session_id: 'test-session-2',
@@ -49,7 +49,7 @@ describe('stop-verify', () => {
     fs.mkdirSync(CACHE_DIR, { recursive: true });
     fs.writeFileSync(counterPath, JSON.stringify({ count: 3, ts: Date.now() }));
 
-    const { exitCode, stdout } = runHook('hooks/stop-verify.js', {
+    const { exitCode, stdout } = runHook('hooks/stop-verify.cjs', {
       hook_event_name: 'Stop',
       stop_hook_active: false,
       session_id: 'test-cb',

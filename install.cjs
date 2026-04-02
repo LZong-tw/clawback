@@ -7,20 +7,20 @@ const os = require('node:os');
 const SRC_ROOT = __dirname;
 
 const CORE_HOOKS = [
-  'hooks/protect-files.js',
-  'hooks/post-edit.js',
-  'hooks/stop-verify.js',
-  'hooks/post-compact-reinject.js',
-  'hooks/notification.js',
+  'hooks/protect-files.cjs',
+  'hooks/post-edit.cjs',
+  'hooks/stop-verify.cjs',
+  'hooks/post-compact-reinject.cjs',
+  'hooks/notification.cjs',
 ];
 
 const LIB_FILES = [
-  'lib/detect-stack.js',
-  'lib/exec.js',
+  'lib/detect-stack.cjs',
+  'lib/exec.cjs',
 ];
 
 const EXTRA_HOOKS = {
-  'read-guard': 'extras/guard-read.js',
+  'read-guard': 'extras/guard-read.cjs',
 };
 
 const MARKER_BEGIN = '<!-- clawback:v1:begin -->';
@@ -37,28 +37,28 @@ function buildHooksConfig(hooksDir, extras = []) {
     PreToolUse: [
       {
         matcher: 'Edit|Write',
-        hooks: [{ type: 'command', command: nodeCmd('protect-files.js') }],
+        hooks: [{ type: 'command', command: nodeCmd('protect-files.cjs') }],
       },
     ],
     PostToolUse: [
       {
         matcher: 'Edit|Write',
-        hooks: [{ type: 'command', command: nodeCmd('post-edit.js') }],
+        hooks: [{ type: 'command', command: nodeCmd('post-edit.cjs') }],
       },
     ],
     Stop: [
       {
-        hooks: [{ type: 'command', command: nodeCmd('stop-verify.js') }],
+        hooks: [{ type: 'command', command: nodeCmd('stop-verify.cjs') }],
       },
     ],
     PostCompact: [
       {
-        hooks: [{ type: 'command', command: nodeCmd('post-compact-reinject.js') }],
+        hooks: [{ type: 'command', command: nodeCmd('post-compact-reinject.cjs') }],
       },
     ],
     Notification: [
       {
-        hooks: [{ type: 'command', command: nodeCmd('notification.js') }],
+        hooks: [{ type: 'command', command: nodeCmd('notification.cjs') }],
       },
     ],
   };
@@ -66,7 +66,7 @@ function buildHooksConfig(hooksDir, extras = []) {
   if (extras.includes('read-guard')) {
     config.PreToolUse.push({
       matcher: 'Read',
-      hooks: [{ type: 'command', command: nodeCmd('guard-read.js') }],
+      hooks: [{ type: 'command', command: nodeCmd('guard-read.cjs') }],
     });
   }
 
@@ -79,12 +79,12 @@ function buildHooksConfig(hooksDir, extras = []) {
 function isClawbackHook(hookEntry) {
   return hookEntry.hooks?.some(h =>
     h.command && (
-      h.command.includes('protect-files.js') ||
-      h.command.includes('post-edit.js') ||
-      h.command.includes('stop-verify.js') ||
-      h.command.includes('post-compact-reinject.js') ||
-      h.command.includes('notification.js') ||
-      h.command.includes('guard-read.js')
+      h.command.includes('protect-files.cjs') ||
+      h.command.includes('post-edit.cjs') ||
+      h.command.includes('stop-verify.cjs') ||
+      h.command.includes('post-compact-reinject.cjs') ||
+      h.command.includes('notification.cjs') ||
+      h.command.includes('guard-read.cjs')
     )
   );
 }

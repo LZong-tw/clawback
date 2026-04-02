@@ -6,7 +6,7 @@ const { runHook } = require('../helpers');
 
 describe('notification', () => {
   it('exits 0 without crashing', () => {
-    const { exitCode } = runHook('hooks/notification.js', {
+    const { exitCode } = runHook('hooks/notification.cjs', {
       hook_event_name: 'Notification',
       notification_type: 'idle_prompt',
     });

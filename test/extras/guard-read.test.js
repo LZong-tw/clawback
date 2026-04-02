@@ -8,7 +8,7 @@ const { runHook, parseHookOutput } = require('../helpers');
 
 describe('guard-read', () => {
   it('allows reading normal files', () => {
-    const { exitCode, stdout } = runHook('extras/guard-read.js', {
+    const { exitCode, stdout } = runHook('extras/guard-read.cjs', {
       hook_event_name: 'PreToolUse',
       tool_name: 'Read',
       tool_input: { file_path: '/project/src/app.ts' },
@@ -19,7 +19,7 @@ describe('guard-read', () => {
 
   it('blocks reading ~/.ssh/', () => {
     const sshPath = path.join(os.homedir(), '.ssh', 'id_rsa');
-    const { exitCode, stdout } = runHook('extras/guard-read.js', {
+    const { exitCode, stdout } = runHook('extras/guard-read.cjs', {
       hook_event_name: 'PreToolUse',
       tool_name: 'Read',
       tool_input: { file_path: sshPath },
@@ -31,7 +31,7 @@ describe('guard-read', () => {
 
   it('blocks reading ~/.aws/', () => {
     const awsPath = path.join(os.homedir(), '.aws', 'credentials');
-    const { exitCode, stdout } = runHook('extras/guard-read.js', {
+    const { exitCode, stdout } = runHook('extras/guard-read.cjs', {
       hook_event_name: 'PreToolUse',
       tool_name: 'Read',
       tool_input: { file_path: awsPath },

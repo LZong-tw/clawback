@@ -6,7 +6,7 @@ const { runHook, parseHookOutput } = require('../helpers');
 
 describe('protect-files', () => {
   it('allows normal source file edits', () => {
-    const { exitCode, stdout } = runHook('hooks/protect-files.js', {
+    const { exitCode, stdout } = runHook('hooks/protect-files.cjs', {
       hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
       tool_input: { file_path: '/project/src/app.ts' },
@@ -18,7 +18,7 @@ describe('protect-files', () => {
   });
 
   it('blocks .env file', () => {
-    const { exitCode, stdout } = runHook('hooks/protect-files.js', {
+    const { exitCode, stdout } = runHook('hooks/protect-files.cjs', {
       hook_event_name: 'PreToolUse',
       tool_name: 'Write',
       tool_input: { file_path: '/project/.env' },
@@ -31,7 +31,7 @@ describe('protect-files', () => {
   });
 
   it('blocks .env.local (case-insensitive)', () => {
-    const { exitCode, stdout } = runHook('hooks/protect-files.js', {
+    const { exitCode, stdout } = runHook('hooks/protect-files.cjs', {
       hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
       tool_input: { file_path: '/project/.ENV.LOCAL' },
@@ -43,7 +43,7 @@ describe('protect-files', () => {
   });
 
   it('blocks .git directory paths', () => {
-    const { exitCode, stdout } = runHook('hooks/protect-files.js', {
+    const { exitCode, stdout } = runHook('hooks/protect-files.cjs', {
       hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
       tool_input: { file_path: '/project/.git/config' },
@@ -55,7 +55,7 @@ describe('protect-files', () => {
   });
 
   it('does not block .gitignore', () => {
-    const { exitCode, stdout } = runHook('hooks/protect-files.js', {
+    const { exitCode, stdout } = runHook('hooks/protect-files.cjs', {
       hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
       tool_input: { file_path: '/project/.gitignore' },
@@ -66,7 +66,7 @@ describe('protect-files', () => {
   });
 
   it('does not block .envoy.yaml', () => {
-    const { exitCode, stdout } = runHook('hooks/protect-files.js', {
+    const { exitCode, stdout } = runHook('hooks/protect-files.cjs', {
       hook_event_name: 'PreToolUse',
       tool_name: 'Edit',
       tool_input: { file_path: '/project/.envoy.yaml' },

@@ -13,8 +13,8 @@ function getSafeExec() {
     const libDir = [
       path.join(__dirname, 'lib'),
       path.join(__dirname, '..', 'lib'),
-    ].find(d => { try { require(path.join(d, 'exec.js')); return true; } catch { return false; } });
-    _safeExec = libDir ? require(path.join(libDir, 'exec.js')).safeExec : require('node:child_process').execFileSync;
+    ].find(d => { try { require(path.join(d, 'exec.cjs')); return true; } catch { return false; } });
+    _safeExec = libDir ? require(path.join(libDir, 'exec.cjs')).safeExec : require('node:child_process').execFileSync;
   }
   return _safeExec;
 }
