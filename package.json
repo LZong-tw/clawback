@@ -1,0 +1,14 @@
+{
+  "name": "clawback",
+  "version": "1.0.0",
+  "description": "Platform-agnostic Claude Code hooks kit for employee-grade verification loops",
+  "scripts": {
+    "test": "node --test test/**/*.test.js",
+    "test:lib": "node --test test/lib/*.test.js",
+    "test:hooks": "node --test test/hooks/*.test.js"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
