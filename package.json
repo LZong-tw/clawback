@@ -1,13 +1,48 @@
 {
-  "name": "clawback",
+  "name": "@lzong.tw/clawback",
   "version": "1.0.0",
   "description": "Platform-agnostic Claude Code hooks kit for employee-grade verification loops",
+  "author": "LZong <lzong.tw@gmail.com>",
+  "license": "MIT",
+  "homepage": "https://github.com/LZong-tw/clawback#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LZong-tw/clawback.git"
+  },
+  "bugs": {
+    "url": "https://github.com/LZong-tw/clawback/issues"
+  },
+  "bin": {
+    "clawback": "install.cjs"
+  },
+  "files": [
+    "install.cjs",
+    "uninstall.cjs",
+    "hooks/",
+    "lib/",
+    "extras/",
+    "templates/",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "claude-code",
+    "claude",
+    "hooks",
+    "verification",
+    "stop-gate",
+    "tsc",
+    "eslint",
+    "gofmt",
+    "prettier",
+    "ai-tools",
+    "developer-tools"
+  ],
   "scripts": {
     "test": "node --test test/**/*.test.js",
     "test:lib": "node --test test/lib/*.test.js",
     "test:hooks": "node --test test/hooks/*.test.js"
   },
-  "license": "MIT",
   "engines": {
     "node": ">=20.0.0"
   }
