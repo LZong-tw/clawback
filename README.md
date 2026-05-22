@@ -69,18 +69,37 @@ Clawback auto-detects your project. You don't configure anything.
 
 ## Install
 
+### Via npm (recommended)
+
+```bash
+npx @lzong.tw/clawback
+```
+
+That's it. Open Claude Code, type `/hooks` to verify.
+
+If you prefer to keep it around as a global binary:
+
+```bash
+npm install -g @lzong.tw/clawback
+clawback
+```
+
+### From source
+
 ```bash
 git clone https://github.com/LZong-tw/clawback.git
 cd clawback
 node install.cjs
 ```
 
-That's it. Open Claude Code, type `/hooks` to verify.
-
 ### Options
 
+The `--with-read-guard` flag works the same regardless of how you invoke it:
+
 ```bash
-node install.cjs --with-read-guard    # Also block reading ~/.ssh, ~/.aws, ~/.gnupg
+npx @lzong.tw/clawback --with-read-guard    # also block reading ~/.ssh, ~/.aws, ~/.gnupg
+# or
+node install.cjs --with-read-guard
 ```
 
 ### What it installs
@@ -92,9 +111,12 @@ node install.cjs --with-read-guard    # Also block reading ~/.ssh, ~/.aws, ~/.gn
 ### Uninstall
 
 ```bash
-cd clawback
-node uninstall.cjs    # Clean removal, restores your original settings
+npx -p @lzong.tw/clawback clawback-uninstall    # if you installed via npx
+clawback-uninstall                              # if you installed globally
+node uninstall.cjs                              # if you installed from source
 ```
+
+Any of these restores your original settings cleanly.
 
 ## Design Principles
 

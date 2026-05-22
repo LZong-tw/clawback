@@ -1,6 +1,6 @@
 {
   "name": "@lzong.tw/clawback",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Platform-agnostic Claude Code hooks kit for employee-grade verification loops",
   "author": "LZong <lzong.tw@gmail.com>",
   "license": "MIT",
@@ -13,7 +13,8 @@
     "url": "https://github.com/LZong-tw/clawback/issues"
   },
   "bin": {
-    "clawback": "install.cjs"
+    "clawback": "install.cjs",
+    "clawback-uninstall": "uninstall.cjs"
   },
   "files": [
     "install.cjs",
