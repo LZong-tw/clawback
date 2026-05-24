@@ -22,13 +22,28 @@ function getDetectStack() {
 }
 
 function isGitPath(filePath) {
-  const segments = filePath.split(path.sep);
+  const segments = filePath.split(/[\\/]+/);
   return segments.some(seg => seg === '.git');
+}
+
+function isHuskyPath(filePath) {
+  const segments = filePath.split(/[\\/]+/);
+  return segments.some(seg => seg === '.husky');
+}
+
+function isGithubWorkflowPath(filePath) {
+  const segments = filePath.split(/[\\/]+/).map(seg => seg.toLowerCase());
+  const githubIndex = segments.indexOf('.github');
+  return githubIndex !== -1 && segments[githubIndex + 1] === 'workflows';
 }
 
 function isEnvFile(basename) {
   const lower = basename.toLowerCase();
   return lower === '.env' || lower.startsWith('.env.') || lower === '.envrc';
+}
+
+function strictInfraProtectionEnabled(argv = process.argv, env = process.env) {
+  return argv.includes('--strict-infra') || env.CLAWBACK_STRICT_INFRA_PROTECTION === '1';
 }
 
 function deny(reason) {
@@ -61,6 +76,7 @@ async function main() {
   try { resolvedPath = fs.realpathSync(rawPath); } catch {}
 
   const pathsToCheck = new Set([rawPath, resolvedPath]);
+  const strictInfra = strictInfraProtectionEnabled();
 
   for (const p of pathsToCheck) {
     const base = path.basename(p);
@@ -74,6 +90,16 @@ async function main() {
     // .git check
     if (isGitPath(p)) {
       deny(`Editing files inside .git/ is blocked.`);
+      return;
+    }
+
+    if (strictInfra && isHuskyPath(p)) {
+      deny(`Editing files inside .husky/ is blocked by strict infra protection.`);
+      return;
+    }
+
+    if (strictInfra && isGithubWorkflowPath(p)) {
+      deny(`Editing files inside .github/workflows/ is blocked by strict infra protection.`);
       return;
     }
   }
@@ -95,4 +121,6 @@ async function main() {
   process.exit(0);
 }
 
-main();
+if (require.main === module) main();
+
+module.exports = { isGitPath, isHuskyPath, isGithubWorkflowPath, strictInfraProtectionEnabled };

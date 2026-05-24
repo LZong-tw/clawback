@@ -21,6 +21,7 @@ const LIB_FILES = [
 
 const EXTRA_HOOKS = {
   'read-guard': 'extras/guard-read.cjs',
+  'ui-guard': 'extras/ui-antipattern-check.mjs',
 };
 
 const MARKER_BEGIN = '<!-- clawback:v1:begin -->';
@@ -29,15 +30,19 @@ const MARKER_END = '<!-- clawback:v1:end -->';
 /**
  * Build the settings.json hooks configuration.
  */
-function buildHooksConfig(hooksDir, extras = []) {
+function buildHooksConfig(hooksDir, extras = [], options = {}) {
   // Forward slashes for cross-platform compat (works in both cmd.exe and bash)
-  const nodeCmd = (file) => `node "${path.join(hooksDir, file).replace(/\\/g, '/')}"`;
+  const nodeCmd = (file, args = []) => {
+    const suffix = args.length ? ` ${args.join(' ')}` : '';
+    return `node "${path.join(hooksDir, file).replace(/\\/g, '/')}"${suffix}`;
+  };
+  const protectArgs = options.strictInfra ? ['--strict-infra'] : [];
 
   const config = {
     PreToolUse: [
       {
         matcher: 'Edit|Write',
-        hooks: [{ type: 'command', command: nodeCmd('protect-files.cjs') }],
+        hooks: [{ type: 'command', command: nodeCmd('protect-files.cjs', protectArgs) }],
       },
     ],
     PostToolUse: [
@@ -70,6 +75,13 @@ function buildHooksConfig(hooksDir, extras = []) {
     });
   }
 
+  if (extras.includes('ui-guard')) {
+    config.PostToolUse.push({
+      matcher: 'Edit|Write',
+      hooks: [{ type: 'command', command: nodeCmd('ui-antipattern-check.mjs'), timeout: 10 }],
+    });
+  }
+
   return config;
 }
 
@@ -78,7 +90,15 @@ function buildHooksConfig(hooksDir, extras = []) {
  */
 function isClawbackHook(hookEntry) {
   // Match both .cjs (current) and .js (legacy) to clean up old installs
-  const HOOK_NAMES = ['protect-files', 'post-edit', 'stop-verify', 'post-compact-reinject', 'notification', 'guard-read'];
+  const HOOK_NAMES = [
+    'protect-files',
+    'post-edit',
+    'stop-verify',
+    'post-compact-reinject',
+    'notification',
+    'guard-read',
+    'ui-antipattern-check',
+  ];
   return hookEntry.hooks?.some(h =>
     h.command && HOOK_NAMES.some(name =>
       h.command.includes(name + '.cjs') || h.command.includes(name + '.js')
@@ -139,6 +159,7 @@ function installClaudeMd(claudeMdPath, templatePath) {
  * @param {object} options
  * @param {string} [options.home] - override home directory (for testing)
  * @param {string[]} [options.extras] - extra hooks to install
+ * @param {boolean} [options.strictInfra] - block .husky/ and .github/workflows/
  */
 function install(options = {}) {
   const home = options.home || os.homedir();
@@ -196,7 +217,7 @@ function install(options = {}) {
     }
   }
 
-  const hooksConfig = buildHooksConfig(hooksDir, extras);
+  const hooksConfig = buildHooksConfig(hooksDir, extras, { strictInfra: Boolean(options.strictInfra) });
   const mergedSettings = mergeSettings(existingSettings, hooksConfig);
 
   // Atomic write
@@ -218,6 +239,10 @@ function install(options = {}) {
   const manifest = {
     version: '1.0.0',
     installedAt: new Date().toISOString(),
+    options: {
+      extras,
+      strictInfra: Boolean(options.strictInfra),
+    },
     files: installedFiles,
   };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
@@ -229,10 +254,12 @@ function install(options = {}) {
 if (require.main === module) {
   const args = process.argv.slice(2);
   const extras = [];
+  const strictInfra = args.includes('--strict-infra');
   if (args.includes('--with-read-guard')) extras.push('read-guard');
+  if (args.includes('--with-ui-guard')) extras.push('ui-guard');
 
   try {
-    const result = install({ extras });
+    const result = install({ extras, strictInfra });
     console.log('=== Clawback Installed ===');
     console.log(`Hooks: ${result.installedFiles.length} files installed`);
     console.log(`Settings: ${result.settingsPath}`);
@@ -244,4 +271,12 @@ if (require.main === module) {
   }
 }
 
-module.exports = { install, mergeSettings, isClawbackHook, installClaudeMd, MARKER_BEGIN, MARKER_END };
+module.exports = {
+  install,
+  buildHooksConfig,
+  mergeSettings,
+  isClawbackHook,
+  installClaudeMd,
+  MARKER_BEGIN,
+  MARKER_END,
+};

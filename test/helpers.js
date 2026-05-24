@@ -5,11 +5,11 @@ const path = require('node:path');
 
 const ROOT = path.join(__dirname, '..');
 
-function runHook(hookPath, stdinData, env = {}) {
+function runHook(hookPath, stdinData, env = {}, args = []) {
   const fullPath = path.join(ROOT, hookPath);
   const input = JSON.stringify(stdinData);
   try {
-    const stdout = execFileSync(process.execPath, [fullPath], {
+    const stdout = execFileSync(process.execPath, [fullPath, ...args], {
       input,
       encoding: 'utf8',
       timeout: 15000,

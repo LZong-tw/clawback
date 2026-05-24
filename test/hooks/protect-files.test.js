@@ -75,4 +75,38 @@ describe('protect-files', () => {
     const output = parseHookOutput(stdout);
     assert.equal(output, null);
   });
+
+  it('allows GitHub workflows by default', () => {
+    const { stdout } = runHook('hooks/protect-files.cjs', {
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Edit',
+      tool_input: { file_path: '/project/.github/workflows/ci.yml' },
+      cwd: '/project',
+    });
+    assert.equal(parseHookOutput(stdout), null);
+  });
+
+  it('blocks GitHub workflows when strict infra protection is enabled', () => {
+    const { stdout } = runHook('hooks/protect-files.cjs', {
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Edit',
+      tool_input: { file_path: '/project/.github/workflows/ci.yml' },
+      cwd: '/project',
+    }, {}, ['--strict-infra']);
+    const output = parseHookOutput(stdout);
+    assert.ok(output);
+    assert.equal(output.hookSpecificOutput.permissionDecision, 'deny');
+  });
+
+  it('blocks Husky hooks when strict infra protection is enabled through env', () => {
+    const { stdout } = runHook('hooks/protect-files.cjs', {
+      hook_event_name: 'PreToolUse',
+      tool_name: 'Write',
+      tool_input: { file_path: '/project/.husky/pre-commit' },
+      cwd: '/project',
+    }, { CLAWBACK_STRICT_INFRA_PROTECTION: '1' });
+    const output = parseHookOutput(stdout);
+    assert.ok(output);
+    assert.equal(output.hookSpecificOutput.permissionDecision, 'deny');
+  });
 });

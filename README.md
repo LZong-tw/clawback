@@ -2,7 +2,7 @@
 
 **Give Claude Code the verification loops Anthropic reserves for their own engineers.**
 
-[![Tests](https://img.shields.io/badge/tests-39%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-47%20passing-brightgreen)](#testing)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-blue)](#)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](#license)
@@ -32,6 +32,11 @@ One `node install.cjs` and your Claude Code gets 5 hooks that fire automatically
 | **notification** | Notification | Desktop notification when Claude needs your attention |
 
 Plus a behavioral CLAUDE.md that handles what hooks can't: phased execution, anti-sprawl limits, mistake logging.
+
+Optional extras can be enabled at install time: `read-guard` blocks reads of
+common credential directories, `strict-infra` also blocks edits under
+`.husky/` and `.github/workflows/`, and `ui-guard` adds TSX-specific UI
+anti-pattern warnings after edits.
 
 ### The Stop Gate
 
@@ -94,17 +99,22 @@ node install.cjs
 
 ### Options
 
-The `--with-read-guard` flag works the same regardless of how you invoke it:
+Install-time flags work the same regardless of how you invoke Clawback:
 
 ```bash
 npx @lzong.tw/clawback --with-read-guard    # also block reading ~/.ssh, ~/.aws, ~/.gnupg
+npx @lzong.tw/clawback --strict-infra       # also block edits to .husky/ and .github/workflows/
+npx @lzong.tw/clawback --with-ui-guard      # also warn on common TSX UI anti-patterns after edits
 # or
 node install.cjs --with-read-guard
+node install.cjs --strict-infra
+node install.cjs --with-ui-guard
 ```
 
 ### What it installs
 
 - 5 hook scripts + 2 lib modules to `~/.claude/hooks/`
+- Optional extra hooks when requested with `--with-*` flags
 - Merges hook config into `~/.claude/settings.json` (preserves your existing hooks)
 - Appends behavioral guidance to `~/.claude/CLAUDE.md` (preserves your existing rules)
 
@@ -166,6 +176,8 @@ Your local overrides take priority over built-in detection.
 ├── stop-verify.cjs             ← Stop (circuit breaker)
 ├── post-compact-reinject.cjs   ← PostCompact
 ├── notification.cjs            ← Notification
+├── guard-read.cjs              ← optional PreToolUse (Read)
+├── ui-antipattern-check.mjs    ← optional PostToolUse (Edit|Write)
 └── clawback-manifest.json      ← tracks what was installed
 ```
 
@@ -192,6 +204,8 @@ Your local overrides take priority over built-in detection.
 We believe in documenting what doesn't work, not hiding it.
 
 - **Bash bypass:** `echo secret > .env` via Bash bypasses protect-files. Use Claude Code's built-in [permission deny rules](https://code.claude.com/docs/en/hooks-guide) for shell safety.
+- **Strict infra is opt-in:** `.husky/` and `.github/workflows/` are only blocked when installed with `--strict-infra` or when `CLAWBACK_STRICT_INFRA_PROTECTION=1` is set for the hook.
+- **UI guard is heuristic:** `--with-ui-guard` emits additional context for common TSX layout/input mistakes, not a formal compiler check.
 - **Windows notifications:** Console bell only. No desktop toast. (PRs welcome.)
 - **Anti-sprawl:** "Max 5 files per response" is CLAUDE.md guidance, not a hook. The hooks API has no concept of response boundaries.
 - **Large TypeScript:** `tsc` timeout is 60s. Projects over 100k LOC may need incremental builds.
@@ -200,7 +214,7 @@ We believe in documenting what doesn't work, not hiding it.
 ## Testing
 
 ```bash
-npm test    # 39 tests, zero dependencies
+npm test    # 47 tests, zero dependencies
 ```
 
 ## Reviewed to Death
@@ -220,7 +234,7 @@ PRs welcome. The architecture is designed for contribution:
 
 - **New language support?** Edit `lib/detect-stack.cjs` only. No hook changes needed.
 - **New hook?** Add to `hooks/`, register in `install.cjs`. Existing hooks untouched.
-- **Bug fix?** 39 tests protect you from regressions.
+- **Bug fix?** 47 tests protect you from regressions.
 
 ## Author
 

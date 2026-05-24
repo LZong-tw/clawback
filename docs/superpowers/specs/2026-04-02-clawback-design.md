@@ -31,7 +31,8 @@ clawback/
 │   ├── post-compact-reinject.js
 │   └── notification.js
 ├── extras/
-│   └── guard-read.js
+│   ├── guard-read.js
+│   └── ui-antipattern-check.mjs
 ├── templates/
 │   ├── CLAUDE.global.md
 │   └── CLAUDE.project.md
@@ -88,6 +89,7 @@ clawback/
 - Dual-path check: `path.resolve()` AND `fs.realpathSync()` (catches symlinks)
 - Own knowledge: `.env` / `.env.*` / `.envrc` (case-insensitive) + `.git` (path segment check)
 - Delegated: lockfiles from `detectStack(path.dirname(filePath)).lockfiles`
+- Optional strict infra mode: `--strict-infra` or `CLAWBACK_STRICT_INFRA_PROTECTION=1` also blocks `.husky/` and `.github/workflows/`
 - Match -> JSON `{ hookSpecificOutput: { hookEventName: "PreToolUse", permissionDecision: "deny", permissionDecisionReason: "..." } }`
 
 ### hooks/post-edit.js — PostToolUse (matcher: `Edit|Write`)
@@ -137,12 +139,20 @@ clawback/
 - Uses `fs.realpathSync()` to resolve symlinks (try/catch, fallback to resolve)
 - Installed via `install.js --with-read-guard`
 
+### extras/ui-antipattern-check.mjs — PostToolUse Edit/Write (opt-in)
+
+- Installed via `install.js --with-ui-guard`
+- Reads edited `.tsx` files and emits `additionalContext` warnings
+- Heuristics cover overflow clipping of dropdowns, number range validation inside `onChange`, and absolute dropdowns without `createPortal`
+
 ### install.js
 
 - Copies `hooks/*.js` + `lib/*.js` to `~/.claude/hooks/` + `~/.claude/hooks/lib/`
 - Deep merges `settings.json` (additive, dedup by command path)
 - CLAUDE.md: `<!-- clawback:v1:begin -->` / `<!-- clawback:v1:end -->` section markers
 - `--with-read-guard` installs `extras/guard-read.js`
+- `--with-ui-guard` installs `extras/ui-antipattern-check.mjs`
+- `--strict-infra` passes strict infra protection to `protect-files`
 - Writes manifest to `~/.claude/hooks/clawback-manifest.json`
 - Idempotent (safe to run multiple times)
 

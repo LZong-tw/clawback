@@ -90,4 +90,23 @@ describe('install', () => {
     assert.ok(Array.isArray(manifest.files));
     assert.ok(manifest.files.length > 0);
   });
+
+  it('installs strict infra protection as an explicit protect-files argument', () => {
+    const { install } = require('../install.cjs');
+    install({ home: fakeHome, strictInfra: true });
+    const settings = JSON.parse(fs.readFileSync(path.join(fakeHome, '.claude', 'settings.json'), 'utf8'));
+    const protectCommand = settings.hooks.PreToolUse
+      .flatMap(entry => entry.hooks || [])
+      .find(hook => hook.command.includes('protect-files.cjs')).command;
+    assert.match(protectCommand, /--strict-infra/);
+  });
+
+  it('installs the optional UI guard extra', () => {
+    const { install } = require('../install.cjs');
+    install({ home: fakeHome, extras: ['ui-guard'] });
+    assert.ok(fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'ui-antipattern-check.mjs')));
+    const settings = JSON.parse(fs.readFileSync(path.join(fakeHome, '.claude', 'settings.json'), 'utf8'));
+    const postToolCommands = settings.hooks.PostToolUse.flatMap(entry => entry.hooks || []).map(hook => hook.command);
+    assert.ok(postToolCommands.some(command => command.includes('ui-antipattern-check.mjs')));
+  });
 });
