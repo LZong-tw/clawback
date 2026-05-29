@@ -1,6 +1,6 @@
 {
   "name": "@lzong.tw/clawback",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Platform-agnostic Claude Code and Codex hooks kit for employee-grade verification loops",
   "author": "LZong <lzong.tw@gmail.com>",
   "license": "MIT",

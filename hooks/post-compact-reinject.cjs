@@ -130,7 +130,12 @@ async function main() {
     if (context.length > BUDGET.total) {
       context = context.slice(0, BUDGET.total) + '\n[total context truncated to 10KB]';
     }
-    process.stdout.write(JSON.stringify({ additionalContext: context }));
+    process.stdout.write(JSON.stringify({
+      hookSpecificOutput: {
+        hookEventName: input.hook_event_name || 'PostCompact',
+        additionalContext: context,
+      },
+    }));
   }
 
   // Lazy cleanup

@@ -2,7 +2,7 @@
 
 **Give Claude Code the verification loops Anthropic reserves for their own engineers.**
 
-[![Tests](https://img.shields.io/badge/tests-51%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-52%20passing-brightgreen)](#testing)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-blue)](#)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](#license)
@@ -123,7 +123,8 @@ node install.cjs --with-codex
 - Appends behavioral guidance to `~/.claude/CLAUDE.md` (preserves your existing rules)
 - With `--with-codex`, copies the same hooks to `~/.codex/hooks/`, merges
   `~/.codex/hooks.json`, and installs `verify-global-hooks.cjs` to regression-test
-  Windows `cmd.exe`, PowerShell, and POSIX-shell-safe command quoting.
+  Windows `cmd.exe`, PowerShell, POSIX-shell-safe command quoting, and
+  Codex-compatible `PostCompact` JSON output.
 
 ### Uninstall
 
@@ -225,7 +226,7 @@ We believe in documenting what doesn't work, not hiding it.
 ## Testing
 
 ```bash
-npm test    # 51 tests, zero dependencies
+npm test    # 52 tests, zero dependencies
 ```
 
 For Codex installs, the generated global hook file can also be checked directly:

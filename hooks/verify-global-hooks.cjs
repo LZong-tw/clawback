@@ -3,7 +3,7 @@
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { execFileSync } = require('node:child_process');
+const { execFileSync, spawnSync } = require('node:child_process');
 
 const root = path.resolve(__dirname, '..');
 const hooksPath = path.join(root, 'hooks.json');
@@ -70,6 +70,58 @@ function shellCheck(scriptPath, shell) {
   });
 }
 
+function smokePostCompact(command) {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clawback-postcompact-'));
+  try {
+    try {
+      execFileSync('git', ['init'], { cwd: tmpDir, stdio: 'pipe', timeout: 15000 });
+    } catch (error) {
+      fail(`cannot initialize temp git repo for PostCompact smoke: ${(error.stderr || error.message).toString().trim()}`);
+      return;
+    }
+
+    fs.writeFileSync(path.join(tmpDir, 'gotchas.md'), '- verify PostCompact output shape\n');
+    const input = JSON.stringify({
+      session_id: 'clawback-verify',
+      hook_event_name: 'PostCompact',
+      cwd: tmpDir,
+    });
+    const result = spawnSync(command, {
+      cwd: tmpDir,
+      shell: true,
+      input,
+      encoding: 'utf8',
+      timeout: 15000,
+    });
+
+    if (result.status !== 0 || result.signal) {
+      fail(`PostCompact smoke exited ${result.status ?? result.signal}: ${(result.stderr || result.error || '').toString().trim()}`);
+      return;
+    }
+
+    const stdout = (result.stdout || '').trim();
+    if (!stdout) {
+      fail('PostCompact smoke produced no JSON output');
+      return;
+    }
+
+    let parsed;
+    try {
+      parsed = JSON.parse(stdout);
+    } catch (error) {
+      fail(`PostCompact smoke produced invalid JSON: ${error.message}`);
+      return;
+    }
+
+    const output = parsed.hookSpecificOutput;
+    if (output?.hookEventName !== 'PostCompact' || typeof output.additionalContext !== 'string') {
+      fail('PostCompact smoke must emit hookSpecificOutput with hookEventName=PostCompact and additionalContext');
+    }
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+}
+
 let hooks;
 try {
   hooks = JSON.parse(fs.readFileSync(hooksPath, 'utf8'));
@@ -116,6 +168,10 @@ for (const command of commands) {
     } catch (error) {
       fail(`${shell} cannot execute quoted hook path ${scriptPath}: ${(error.stderr || error.message).toString().trim()}`);
     }
+  }
+
+  if (command.includes('post-compact-reinject')) {
+    smokePostCompact(command);
   }
 }
 
