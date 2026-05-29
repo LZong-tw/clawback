@@ -53,4 +53,19 @@ describe('uninstall', () => {
     uninstall({ home: fakeHome });
     assert.ok(!fs.existsSync(path.join(fakeHome, '.claude', 'hooks', 'clawback-manifest.json')));
   });
+
+  it('removes Codex hook files and config entries when installed', () => {
+    const { install } = require('../install.cjs');
+    const { uninstall } = require('../uninstall.cjs');
+    install({ home: fakeHome, codex: true, extras: ['ui-guard'] });
+
+    uninstall({ home: fakeHome });
+
+    assert.ok(!fs.existsSync(path.join(fakeHome, '.codex', 'hooks', 'protect-files.cjs')));
+    assert.ok(!fs.existsSync(path.join(fakeHome, '.codex', 'hooks', 'verify-global-hooks.cjs')));
+
+    const codexHooks = JSON.parse(fs.readFileSync(path.join(fakeHome, '.codex', 'hooks.json'), 'utf8'));
+    assert.ok(!JSON.stringify(codexHooks).includes('protect-files.cjs'));
+    assert.ok(!JSON.stringify(codexHooks).includes('ui-antipattern-check.mjs'));
+  });
 });

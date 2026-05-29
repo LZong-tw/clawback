@@ -64,9 +64,11 @@ function cleanClaudeMd(claudeMdPath) {
 function uninstall(options = {}) {
   const home = options.home || os.homedir();
   const claudeDir = path.join(home, '.claude');
+  const codexDir = path.join(home, '.codex');
   const hooksDir = path.join(claudeDir, 'hooks');
   const manifestPath = path.join(hooksDir, 'clawback-manifest.json');
   const settingsPath = path.join(claudeDir, 'settings.json');
+  const codexHooksPath = path.join(codexDir, 'hooks.json');
   const claudeMdPath = path.join(claudeDir, 'CLAUDE.md');
 
   // Read manifest
@@ -100,6 +102,9 @@ function uninstall(options = {}) {
 
   // Clean settings.json
   cleanSettings(settingsPath);
+
+  // Clean Codex hooks.json if Clawback installed Codex hooks.
+  cleanSettings(codexHooksPath);
 
   // Clean CLAUDE.md
   cleanClaudeMd(claudeMdPath);

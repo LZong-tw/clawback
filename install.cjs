@@ -24,6 +24,8 @@ const EXTRA_HOOKS = {
   'ui-guard': 'extras/ui-antipattern-check.mjs',
 };
 
+const VERIFY_HOOK = 'hooks/verify-global-hooks.cjs';
+
 const MARKER_BEGIN = '<!-- clawback:v1:begin -->';
 const MARKER_END = '<!-- clawback:v1:end -->';
 
@@ -37,6 +39,7 @@ function buildHooksConfig(hooksDir, extras = [], options = {}) {
     return `node "${path.join(hooksDir, file).replace(/\\/g, '/')}"${suffix}`;
   };
   const protectArgs = options.strictInfra ? ['--strict-infra'] : [];
+  const includeNotification = options.includeNotification !== false;
 
   const config = {
     PreToolUse: [
@@ -61,12 +64,15 @@ function buildHooksConfig(hooksDir, extras = [], options = {}) {
         hooks: [{ type: 'command', command: nodeCmd('post-compact-reinject.cjs') }],
       },
     ],
-    Notification: [
+  };
+
+  if (includeNotification) {
+    config.Notification = [
       {
         hooks: [{ type: 'command', command: nodeCmd('notification.cjs') }],
       },
-    ],
-  };
+    ];
+  }
 
   if (extras.includes('read-guard')) {
     config.PreToolUse.push({
@@ -98,10 +104,11 @@ function isClawbackHook(hookEntry) {
     'notification',
     'guard-read',
     'ui-antipattern-check',
+    'verify-global-hooks',
   ];
   return hookEntry.hooks?.some(h =>
     h.command && HOOK_NAMES.some(name =>
-      h.command.includes(name + '.cjs') || h.command.includes(name + '.js')
+      h.command.includes(name + '.cjs') || h.command.includes(name + '.mjs') || h.command.includes(name + '.js')
     )
   );
 }
@@ -154,30 +161,20 @@ function installClaudeMd(claudeMdPath, templatePath) {
   }
 }
 
-/**
- * Main install function.
- * @param {object} options
- * @param {string} [options.home] - override home directory (for testing)
- * @param {string[]} [options.extras] - extra hooks to install
- * @param {boolean} [options.strictInfra] - block .husky/ and .github/workflows/
- */
-function install(options = {}) {
-  const home = options.home || os.homedir();
-  const extras = options.extras || [];
-  const claudeDir = path.join(home, '.claude');
-  const hooksDir = path.join(claudeDir, 'hooks');
-  const libDir = path.join(hooksDir, 'lib');
-  const settingsPath = path.join(claudeDir, 'settings.json');
-  const claudeMdPath = path.join(claudeDir, 'CLAUDE.md');
-  const manifestPath = path.join(hooksDir, 'clawback-manifest.json');
+function packageVersion() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(SRC_ROOT, 'package.json'), 'utf8')).version || '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
 
-  // Create directories
+function copyHookFiles(hooksDir, libDir, extras = [], options = {}) {
   fs.mkdirSync(hooksDir, { recursive: true });
   fs.mkdirSync(libDir, { recursive: true });
 
   const installedFiles = [];
 
-  // Copy core hooks
   for (const file of CORE_HOOKS) {
     const src = path.join(SRC_ROOT, file);
     const dest = path.join(hooksDir, path.basename(file));
@@ -185,7 +182,6 @@ function install(options = {}) {
     installedFiles.push(dest);
   }
 
-  // Copy lib files
   for (const file of LIB_FILES) {
     const src = path.join(SRC_ROOT, file);
     const dest = path.join(libDir, path.basename(file));
@@ -193,7 +189,6 @@ function install(options = {}) {
     installedFiles.push(dest);
   }
 
-  // Copy extras
   for (const extra of extras) {
     const file = EXTRA_HOOKS[extra];
     if (file) {
@@ -204,30 +199,84 @@ function install(options = {}) {
     }
   }
 
-  // Merge settings.json
-  let existingSettings = {};
-  if (fs.existsSync(settingsPath)) {
-    try {
-      existingSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
-    } catch {
-      // Corrupted settings — back up and start fresh
-      const backup = settingsPath + '.bak.' + Date.now();
-      fs.copyFileSync(settingsPath, backup);
-      console.log(`Backed up corrupted settings.json to ${backup}`);
-    }
+  if (options.includeVerifier) {
+    const src = path.join(SRC_ROOT, VERIFY_HOOK);
+    const dest = path.join(hooksDir, path.basename(VERIFY_HOOK));
+    fs.copyFileSync(src, dest);
+    installedFiles.push(dest);
   }
 
-  const hooksConfig = buildHooksConfig(hooksDir, extras, { strictInfra: Boolean(options.strictInfra) });
-  const mergedSettings = mergeSettings(existingSettings, hooksConfig);
+  return installedFiles;
+}
 
-  // Atomic write
-  const tmpSettings = settingsPath + '.tmp.' + process.pid;
+function readJsonFile(filePath) {
+  if (!fs.existsSync(filePath)) return {};
   try {
-    fs.writeFileSync(tmpSettings, JSON.stringify(mergedSettings, null, 2));
-    fs.renameSync(tmpSettings, settingsPath);
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    const backup = filePath + '.bak.' + Date.now();
+    fs.copyFileSync(filePath, backup);
+    console.log(`Backed up corrupted JSON to ${backup}`);
+    return {};
+  }
+}
+
+function writeJsonFileAtomic(filePath, value) {
+  const tmp = filePath + '.tmp.' + process.pid;
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(value, null, 2));
+    fs.renameSync(tmp, filePath);
   } catch (err) {
-    try { fs.unlinkSync(tmpSettings); } catch {}
+    try { fs.unlinkSync(tmp); } catch {}
     throw err;
+  }
+}
+
+/**
+ * Main install function.
+ * @param {object} options
+ * @param {string} [options.home] - override home directory (for testing)
+ * @param {string[]} [options.extras] - extra hooks to install
+ * @param {boolean} [options.strictInfra] - block .husky/ and .github/workflows/
+ * @param {boolean} [options.codex] - also install Codex global hooks
+ */
+function install(options = {}) {
+  const home = options.home || os.homedir();
+  const extras = options.extras || [];
+  const installCodex = Boolean(options.codex);
+  const claudeDir = path.join(home, '.claude');
+  const hooksDir = path.join(claudeDir, 'hooks');
+  const libDir = path.join(hooksDir, 'lib');
+  const settingsPath = path.join(claudeDir, 'settings.json');
+  const claudeMdPath = path.join(claudeDir, 'CLAUDE.md');
+  const manifestPath = path.join(hooksDir, 'clawback-manifest.json');
+
+  const installedFiles = copyHookFiles(hooksDir, libDir, extras);
+
+  // Merge settings.json
+  const existingSettings = readJsonFile(settingsPath);
+  const hooksConfig = buildHooksConfig(hooksDir, extras, {
+    strictInfra: Boolean(options.strictInfra),
+  });
+  const mergedSettings = mergeSettings(existingSettings, hooksConfig);
+  writeJsonFileAtomic(settingsPath, mergedSettings);
+
+  let codexHooksPath = null;
+  if (installCodex) {
+    const codexDir = path.join(home, '.codex');
+    const codexHooksDir = path.join(codexDir, 'hooks');
+    const codexLibDir = path.join(codexHooksDir, 'lib');
+    codexHooksPath = path.join(codexDir, 'hooks.json');
+
+    installedFiles.push(...copyHookFiles(codexHooksDir, codexLibDir, extras, { includeVerifier: true }));
+
+    const existingCodexHooks = readJsonFile(codexHooksPath);
+    const codexHooksConfig = buildHooksConfig(codexHooksDir, extras, {
+      strictInfra: Boolean(options.strictInfra),
+      includeNotification: false,
+    });
+    const mergedCodexHooks = mergeSettings(existingCodexHooks, codexHooksConfig);
+    writeJsonFileAtomic(codexHooksPath, mergedCodexHooks);
   }
 
   // Install CLAUDE.md
@@ -237,17 +286,18 @@ function install(options = {}) {
 
   // Write manifest
   const manifest = {
-    version: '1.0.0',
+    version: packageVersion(),
     installedAt: new Date().toISOString(),
     options: {
       extras,
       strictInfra: Boolean(options.strictInfra),
+      codex: installCodex,
     },
     files: installedFiles,
   };
   fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
 
-  return { installedFiles, settingsPath, manifestPath };
+  return { installedFiles, settingsPath, codexHooksPath, manifestPath };
 }
 
 // CLI entry point
@@ -255,16 +305,19 @@ if (require.main === module) {
   const args = process.argv.slice(2);
   const extras = [];
   const strictInfra = args.includes('--strict-infra');
+  const codex = args.includes('--with-codex') || args.includes('--codex');
   if (args.includes('--with-read-guard')) extras.push('read-guard');
   if (args.includes('--with-ui-guard')) extras.push('ui-guard');
 
   try {
-    const result = install({ extras, strictInfra });
+    const result = install({ extras, strictInfra, codex });
     console.log('=== Clawback Installed ===');
     console.log(`Hooks: ${result.installedFiles.length} files installed`);
     console.log(`Settings: ${result.settingsPath}`);
+    if (result.codexHooksPath) console.log(`Codex hooks: ${result.codexHooksPath}`);
     console.log(`Manifest: ${result.manifestPath}`);
     console.log('\nRun "claude" and type /hooks to verify.');
+    if (result.codexHooksPath) console.log('For Codex, run: node ~/.codex/hooks/verify-global-hooks.cjs');
   } catch (err) {
     console.error('Install failed:', err.message);
     process.exit(1);

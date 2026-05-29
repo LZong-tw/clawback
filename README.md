@@ -2,7 +2,7 @@
 
 **Give Claude Code the verification loops Anthropic reserves for their own engineers.**
 
-[![Tests](https://img.shields.io/badge/tests-47%20passing-brightgreen)](#testing)
+[![Tests](https://img.shields.io/badge/tests-51%20passing-brightgreen)](#testing)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-blue)](#)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](#license)
@@ -21,7 +21,9 @@ Anthropic engineers get a Claude that checks whether generated code actually com
 
 ## What It Does
 
-One `node install.cjs` and your Claude Code gets 5 hooks that fire automatically:
+One `node install.cjs` and your Claude Code gets 5 hooks that fire automatically.
+Add `--with-codex` and the same guardrails are installed into Codex global hooks
+with shell-safe command quoting:
 
 | Hook | Event | What It Does |
 |------|-------|--------------|
@@ -105,10 +107,12 @@ Install-time flags work the same regardless of how you invoke Clawback:
 npx @lzong.tw/clawback --with-read-guard    # also block reading ~/.ssh, ~/.aws, ~/.gnupg
 npx @lzong.tw/clawback --strict-infra       # also block edits to .husky/ and .github/workflows/
 npx @lzong.tw/clawback --with-ui-guard      # also warn on common TSX UI anti-patterns after edits
+npx @lzong.tw/clawback --with-codex         # also install ~/.codex/hooks.json + ~/.codex/hooks/
 # or
 node install.cjs --with-read-guard
 node install.cjs --strict-infra
 node install.cjs --with-ui-guard
+node install.cjs --with-codex
 ```
 
 ### What it installs
@@ -117,6 +121,9 @@ node install.cjs --with-ui-guard
 - Optional extra hooks when requested with `--with-*` flags
 - Merges hook config into `~/.claude/settings.json` (preserves your existing hooks)
 - Appends behavioral guidance to `~/.claude/CLAUDE.md` (preserves your existing rules)
+- With `--with-codex`, copies the same hooks to `~/.codex/hooks/`, merges
+  `~/.codex/hooks.json`, and installs `verify-global-hooks.cjs` to regression-test
+  Windows `cmd.exe`, PowerShell, and POSIX-shell-safe command quoting.
 
 ### Uninstall
 
@@ -135,6 +142,10 @@ Any of these restores your original settings cleanly.
 **Zero external dependencies.** Node.js built-in modules only. No `node_modules`, no supply chain risk, no version conflicts.
 
 **Cross-platform.** Windows (Git Bash / MINGW64), macOS, Linux. Path handling via `path.join()`, subprocess safety via platform-aware `exec.cjs`.
+
+**Shell-safe hook commands.** Installed hook commands use `node "absolute/path"`
+instead of POSIX env-prefixes or single-quoted Windows paths, so the same generated
+command shape works in `cmd.exe`, PowerShell, and POSIX shells.
 
 **Idempotent.** Run `node install.cjs` ten times. You get one set of hooks, not ten duplicates.
 
@@ -214,7 +225,13 @@ We believe in documenting what doesn't work, not hiding it.
 ## Testing
 
 ```bash
-npm test    # 47 tests, zero dependencies
+npm test    # 51 tests, zero dependencies
+```
+
+For Codex installs, the generated global hook file can also be checked directly:
+
+```bash
+node ~/.codex/hooks/verify-global-hooks.cjs
 ```
 
 ## Reviewed to Death
@@ -234,7 +251,7 @@ PRs welcome. The architecture is designed for contribution:
 
 - **New language support?** Edit `lib/detect-stack.cjs` only. No hook changes needed.
 - **New hook?** Add to `hooks/`, register in `install.cjs`. Existing hooks untouched.
-- **Bug fix?** 47 tests protect you from regressions.
+- **Bug fix?** 51 tests protect you from regressions.
 
 ## Author
 

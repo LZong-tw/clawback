@@ -5,6 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const { execFileSync } = require('node:child_process');
 
 describe('install', () => {
   let fakeHome;
@@ -108,5 +109,68 @@ describe('install', () => {
     const settings = JSON.parse(fs.readFileSync(path.join(fakeHome, '.claude', 'settings.json'), 'utf8'));
     const postToolCommands = settings.hooks.PostToolUse.flatMap(entry => entry.hooks || []).map(hook => hook.command);
     assert.ok(postToolCommands.some(command => command.includes('ui-antipattern-check.mjs')));
+  });
+
+  it('installs Codex hooks with shell-safe quoted commands', () => {
+    const { install } = require('../install.cjs');
+    install({ home: fakeHome, codex: true, extras: ['ui-guard'] });
+
+    assert.ok(fs.existsSync(path.join(fakeHome, '.codex', 'hooks', 'protect-files.cjs')));
+    assert.ok(fs.existsSync(path.join(fakeHome, '.codex', 'hooks', 'post-edit.cjs')));
+    assert.ok(fs.existsSync(path.join(fakeHome, '.codex', 'hooks', 'verify-global-hooks.cjs')));
+
+    const codexHooks = JSON.parse(fs.readFileSync(path.join(fakeHome, '.codex', 'hooks.json'), 'utf8'));
+    const commands = Object.values(codexHooks.hooks)
+      .flat()
+      .flatMap(entry => entry.hooks || [])
+      .map(hook => hook.command);
+
+    assert.ok(commands.some(command => command.includes('protect-files.cjs')));
+    assert.ok(commands.some(command => command.includes('ui-antipattern-check.mjs')));
+    assert.ok(commands.every(command => command.startsWith('node "')));
+    assert.ok(commands.every(command => !command.includes("node '")));
+    assert.ok(commands.every(command => !/\b[A-Za-z_][A-Za-z0-9_]*=.*\s+node\b/.test(command)));
+  });
+
+  it('keeps existing Codex hooks and dedupes Clawback entries', () => {
+    fs.mkdirSync(path.join(fakeHome, '.codex'), { recursive: true });
+    fs.writeFileSync(path.join(fakeHome, '.codex', 'hooks.json'), JSON.stringify({
+      hooks: {
+        SessionStart: [{ hooks: [{ type: 'command', command: 'echo custom-hook' }] }],
+        PreToolUse: [{ matcher: 'Edit|Write', hooks: [{ type: 'command', command: 'node "C:/old/protect-files.cjs"' }] }],
+      },
+    }));
+
+    const { install } = require('../install.cjs');
+    install({ home: fakeHome, codex: true });
+    install({ home: fakeHome, codex: true });
+
+    const codexHooks = JSON.parse(fs.readFileSync(path.join(fakeHome, '.codex', 'hooks.json'), 'utf8'));
+    const preToolCommands = codexHooks.hooks.PreToolUse
+      .flatMap(entry => entry.hooks || [])
+      .map(hook => hook.command)
+      .filter(command => command.includes('protect-files.cjs'));
+
+    assert.equal(preToolCommands.length, 1);
+    assert.ok(JSON.stringify(codexHooks).includes('custom-hook'));
+
+    const verifier = path.join(fakeHome, '.codex', 'hooks', 'verify-global-hooks.cjs');
+    const output = execFileSync(process.execPath, [verifier], {
+      encoding: 'utf8',
+      timeout: 60000,
+    });
+    assert.match(output, /ok \(\d+ commands\)/);
+  });
+
+  it('installs a Codex hook verifier that passes for generated hooks', () => {
+    const { install } = require('../install.cjs');
+    install({ home: fakeHome, codex: true, extras: ['ui-guard'] });
+
+    const verifier = path.join(fakeHome, '.codex', 'hooks', 'verify-global-hooks.cjs');
+    const output = execFileSync(process.execPath, [verifier], {
+      encoding: 'utf8',
+      timeout: 60000,
+    });
+    assert.match(output, /ok \(\d+ commands\)/);
   });
 });
