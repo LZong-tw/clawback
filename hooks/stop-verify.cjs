@@ -118,14 +118,8 @@ function writeCounter(counterPath, count) {
   }
 }
 
-function blockStop(errors) {
-  process.stdout.write(JSON.stringify({
-    hookSpecificOutput: {
-      hookEventName: 'Stop',
-      decision: 'block',
-    },
-    additionalContext: errors,
-  }));
+function blockStop(reason) {
+  process.stdout.write(JSON.stringify({ decision: 'block', reason }));
 }
 
 async function main() {
@@ -152,7 +146,7 @@ async function main() {
   if (count >= MAX_STRIKES) {
     // Allow stop but warn
     process.stdout.write(JSON.stringify({
-      additionalContext: `[clawback] Circuit breaker: allowing stop after ${MAX_STRIKES} consecutive verification failures. Errors may remain.`,
+      systemMessage: `[clawback] Circuit breaker: allowing stop after ${MAX_STRIKES} consecutive verification failures. Errors may remain.`,
     }));
     process.exit(0);
   }
@@ -252,4 +246,9 @@ async function main() {
   }
 }
 
-main();
+// Only auto-run when invoked directly as a hook (not when required by tests).
+if (require.main === module) {
+  main();
+}
+
+module.exports = { blockStop, filterTscErrors, getModifiedFiles };

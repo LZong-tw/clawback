@@ -1,62 +1,72 @@
 # Clawback
 
-**Give Claude Code the verification loops Anthropic reserves for their own engineers.**
+**Stop your AI coding agent from saying "Done" until your code actually typechecks and lints.**
 
-[![Tests](https://img.shields.io/badge/tests-52%20passing-brightgreen)](#testing)
+Mechanical verification hooks for **Claude Code** and **Codex** — zero dependencies, auto-detects your stack, cross-platform.
+
+[![Tests](https://img.shields.io/badge/tests-59%20passing-brightgreen)](#testing)
 [![Zero Dependencies](https://img.shields.io/badge/dependencies-0-blue)](#)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey)](#)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](#license)
 
+> *Prompts are requests. Hooks are guarantees.*
+
 ---
 
-## The Story
+## See it
 
-On March 31, 2026, [Claude Code's source map leaked via npm](https://thehackernews.com/2026/04/claude-code-tleaked-via-npm-packaging.html). Inside 512,000 lines of code, the community discovered something interesting: **employee-only verification loops** gated behind `USER_TYPE === 'ant'`.
-
-Anthropic engineers get a Claude that checks whether generated code actually compiles before claiming it's done. The rest of us get a Claude that says "Done!" and hopes for the best.
-
-**Clawback takes those patterns back.** Not by hacking flags or bypassing auth -- but by implementing the same behavioral guarantees through Claude Code's public hooks API.
-
-> *"Prompts are requests, hooks are guarantees."*
-
-## What It Does
-
-One `node install.cjs` and your Claude Code gets 5 hooks that fire automatically.
-Add `--with-codex` and the same guardrails are installed into Codex global hooks
-with shell-safe command quoting:
-
-| Hook | Event | What It Does |
-|------|-------|--------------|
-| **protect-files** | PreToolUse | Blocks edits to `.env`, lockfiles, `.git/` -- before Claude touches them |
-| **post-edit** | PostToolUse | Formats your code, then lints it (report-only) -- after every edit |
-| **stop-verify** | Stop | Runs full typecheck + lint -- Claude can't say "Done!" until it passes |
-| **post-compact** | PostCompact | Re-injects git state + `gotchas.md` after context compaction |
-| **notification** | Notification | Desktop notification when Claude needs your attention |
-
-Plus a behavioral CLAUDE.md that handles what hooks can't: phased execution, anti-sprawl limits, mistake logging.
-
-Optional extras can be enabled at install time: `read-guard` blocks reads of
-common credential directories, `strict-infra` also blocks edits under
-`.husky/` and `.github/workflows/`, and `ui-guard` adds TSX-specific UI
-anti-pattern warnings after edits.
-
-### The Stop Gate
-
-This is the core feature. When Claude tries to complete a task:
+Your agent finishes a task. Before it's allowed to stop, the Stop gate runs:
 
 ```
 Claude: "Done! I've implemented the feature."
   └→ stop-verify fires
        ├→ tsc --noEmit (60s timeout)
        ├→ eslint (15s timeout)
-       ├→ errors scoped to files YOU changed (not pre-existing debt)
+       ├→ errors scoped to the files YOU changed (not pre-existing debt)
        └→ errors found? → BLOCKED. "Fix these first."
            └→ 3 consecutive blocks? → circuit breaker allows stop + final warning
 ```
 
+**Before Clawback:** the agent says "Done!", you discover the type error.
+**With Clawback:** "Done!" → blocked → fixed → *actually* done.
+
 No more "the code compiles in my imagination."
 
-## Zero Config, Any Stack
+## Install
+
+```bash
+npx @lzong.tw/clawback
+```
+
+That's it. Open Claude Code and type `/hooks` to verify. Add `--with-codex` to install the same guardrails into Codex.
+
+```bash
+# keep it around as a global binary instead
+npm install -g @lzong.tw/clawback && clawback
+```
+
+```bash
+# or from source
+git clone https://github.com/LZong-tw/clawback.git && cd clawback && node install.cjs
+```
+
+## What you get
+
+One install wires up hooks that fire automatically — whether the agent wants them to or not.
+
+| Hook | Event | What it does |
+|------|-------|--------------|
+| **protect-files** | PreToolUse | Blocks edits to `.env`, lockfiles, `.git/` — before the agent touches them |
+| **post-edit** | PostToolUse | Formats your code, then lints it (report-only) — after every edit |
+| **stop-verify** | Stop | Runs full typecheck + lint — the agent can't say "Done!" until it passes |
+| **post-compact** | SessionStart | Re-injects git state + `gotchas.md` on every session start, including after compaction (Codex: PostCompact) |
+| **notification** | Notification | Desktop notification when the agent needs your attention |
+
+Plus a behavioral `CLAUDE.md` that handles what hooks can't: phased execution, anti-sprawl limits, mistake logging.
+
+Optional extras at install time: `--with-read-guard` blocks reads of common credential directories, `--strict-infra` also blocks edits under `.husky/` and `.github/workflows/`, and `--with-ui-guard` adds TSX-specific UI anti-pattern warnings after edits.
+
+## Zero config, any stack
 
 Clawback auto-detects your project. You don't configure anything.
 
@@ -74,59 +84,68 @@ Clawback auto-detects your project. You don't configure anything.
 
 **Your stack not listed?** [Extend it](#adding-custom-stacks) without forking.
 
-## Install
+## How the two layers work
 
-### Via npm (recommended)
-
-```bash
-npx @lzong.tw/clawback
+```
+┌─────────────────────────────────────────────────────┐
+│  CLAUDE.md (behavioral guidance)                    │
+│  "Don't touch >5 files per response"                │
+│  "Re-read files after 10+ messages"                 │
+│  "Log mistakes to gotchas.md"                        │
+│  → Claude follows these. Usually. Hopefully.        │
+├─────────────────────────────────────────────────────┤
+│  Hooks (mechanical enforcement)                     │
+│  protect-files  → BLOCKED. Period.                   │
+│  stop-verify    → tsc fails? Can't stop. Period.     │
+│  post-edit      → Formatted. Linted. Every time.     │
+│  → These fire whether Claude wants them to or not.  │
+└─────────────────────────────────────────────────────┘
 ```
 
-That's it. Open Claude Code, type `/hooks` to verify.
+The prompt layer asks. The hook layer enforces. Clawback is mostly the second one.
 
-If you prefer to keep it around as a global binary:
+## Failure modes & limits
 
-```bash
-npm install -g @lzong.tw/clawback
-clawback
-```
+We document what doesn't work instead of hiding it.
 
-### From source
+- **Bash bypass:** `echo secret > .env` via Bash bypasses protect-files. Use Claude Code's built-in [permission deny rules](https://code.claude.com/docs/en/hooks-guide) for shell safety.
+- **Strict infra is opt-in:** `.husky/` and `.github/workflows/` are only blocked with `--strict-infra` (or `CLAWBACK_STRICT_INFRA_PROTECTION=1`).
+- **UI guard is heuristic:** `--with-ui-guard` emits context for common TSX layout/input mistakes, not a formal compiler check.
+- **Windows notifications:** Console bell only. No desktop toast. (PRs welcome.)
+- **Anti-sprawl:** "Max 5 files per response" is CLAUDE.md guidance, not a hook. The hooks API has no concept of response boundaries.
+- **Large TypeScript:** `tsc` timeout is 60s. Projects over 100k LOC may need incremental builds.
+- **TS 5.0–5.1 monorepos:** `tsc --build --noEmit` is unsupported in those versions. Upgrade to 5.2+.
 
-```bash
-git clone https://github.com/LZong-tw/clawback.git
-cd clawback
-node install.cjs
-```
+## Why this exists
 
-### Options
+On March 31, 2026, [Claude Code's source map leaked via npm](https://thehackernews.com/2026/04/claude-code-tleaked-via-npm-packaging.html). Inside, the community found **employee-only verification loops** gated behind `USER_TYPE === 'ant'` — Anthropic engineers got a Claude that checks whether generated code actually compiles before claiming it's done; everyone else got "Done!" and hope.
 
-Install-time flags work the same regardless of how you invoke Clawback:
+That leak was the prompt, not the point. The point is that *every* coding agent should refuse to call a task finished until the machine has verified it. Clawback implements that guarantee through Claude Code's and Codex's public hooks API — no flags, no auth bypass, no patched binary.
+
+## Design principles
+
+**Hooks are 100% stack-agnostic.** Every hook delegates to `detect-stack.cjs` — the single file that knows about languages. Adding Java support means editing one file, not five.
+
+**Zero external dependencies.** Node.js built-ins only. No `node_modules`, no supply chain risk, no version conflicts.
+
+**Cross-platform.** Windows (Git Bash / MINGW64), macOS, Linux. Path handling via `path.join()`, subprocess safety via platform-aware `exec.cjs`.
+
+**Shell-safe hook commands.** Installed commands use `node "absolute/path"` rather than POSIX env-prefixes or single-quoted Windows paths, so the same command shape works in `cmd.exe`, PowerShell, and POSIX shells.
+
+**Idempotent.** Run the installer ten times. You get one set of hooks, not ten duplicates.
+
+**Safe to remove.** Uninstall reverses everything; your settings go back to how they were.
+
+## Install options & uninstall
 
 ```bash
 npx @lzong.tw/clawback --with-read-guard    # also block reading ~/.ssh, ~/.aws, ~/.gnupg
 npx @lzong.tw/clawback --strict-infra       # also block edits to .husky/ and .github/workflows/
-npx @lzong.tw/clawback --with-ui-guard      # also warn on common TSX UI anti-patterns after edits
+npx @lzong.tw/clawback --with-ui-guard      # also warn on common TSX UI anti-patterns
 npx @lzong.tw/clawback --with-codex         # also install ~/.codex/hooks.json + ~/.codex/hooks/
-# or
-node install.cjs --with-read-guard
-node install.cjs --strict-infra
-node install.cjs --with-ui-guard
-node install.cjs --with-codex
 ```
 
-### What it installs
-
-- 5 hook scripts + 2 lib modules to `~/.claude/hooks/`
-- Optional extra hooks when requested with `--with-*` flags
-- Merges hook config into `~/.claude/settings.json` (preserves your existing hooks)
-- Appends behavioral guidance to `~/.claude/CLAUDE.md` (preserves your existing rules)
-- With `--with-codex`, copies the same hooks to `~/.codex/hooks/`, merges
-  `~/.codex/hooks.json`, and installs `verify-global-hooks.cjs` to regression-test
-  Windows `cmd.exe`, PowerShell, POSIX-shell-safe command quoting, and
-  Codex-compatible `PostCompact` JSON output.
-
-### Uninstall
+**What it installs:** hook scripts + lib modules to `~/.claude/hooks/`, merges hook config into `~/.claude/settings.json` (preserving your existing hooks), and appends behavioral guidance to `~/.claude/CLAUDE.md` (preserving your existing rules). With `--with-codex`, it copies the same hooks to `~/.codex/hooks/`, merges `~/.codex/hooks.json`, and installs `verify-global-hooks.cjs` to regression-test `cmd.exe` / PowerShell / POSIX command quoting and the reinject hook's output. On Claude Code the reinject hook runs on `SessionStart`; on Codex it runs on `PostCompact`.
 
 ```bash
 npx -p @lzong.tw/clawback clawback-uninstall    # if you installed via npx
@@ -136,23 +155,7 @@ node uninstall.cjs                              # if you installed from source
 
 Any of these restores your original settings cleanly.
 
-## Design Principles
-
-**Hooks are 100% stack-agnostic.** Every hook delegates to `detect-stack.cjs` -- the single file that knows about languages. Adding Java support means editing one file, not five.
-
-**Zero external dependencies.** Node.js built-in modules only. No `node_modules`, no supply chain risk, no version conflicts.
-
-**Cross-platform.** Windows (Git Bash / MINGW64), macOS, Linux. Path handling via `path.join()`, subprocess safety via platform-aware `exec.cjs`.
-
-**Shell-safe hook commands.** Installed hook commands use `node "absolute/path"`
-instead of POSIX env-prefixes or single-quoted Windows paths, so the same generated
-command shape works in `cmd.exe`, PowerShell, and POSIX shells.
-
-**Idempotent.** Run `node install.cjs` ten times. You get one set of hooks, not ten duplicates.
-
-**Safe to remove.** `node uninstall.cjs` reverses everything. Your settings go back to how they were.
-
-## Adding Custom Stacks
+## Adding custom stacks
 
 Create `~/.clawback/detect-stack.local.js`:
 
@@ -186,47 +189,17 @@ Your local overrides take priority over built-in detection.
 ├── protect-files.cjs           ← PreToolUse (Edit|Write)
 ├── post-edit.cjs               ← PostToolUse (Edit|Write)
 ├── stop-verify.cjs             ← Stop (circuit breaker)
-├── post-compact-reinject.cjs   ← PostCompact
+├── post-compact-reinject.cjs   ← SessionStart (Claude) / PostCompact (Codex)
 ├── notification.cjs            ← Notification
 ├── guard-read.cjs              ← optional PreToolUse (Read)
 ├── ui-antipattern-check.mjs    ← optional PostToolUse (Edit|Write)
 └── clawback-manifest.json      ← tracks what was installed
 ```
 
-### How the Two Layers Work
-
-```
-┌─────────────────────────────────────────────────────┐
-│  CLAUDE.md (behavioral guidance)                    │
-│  "Don't touch >5 files per response"                │
-│  "Re-read files after 10+ messages"                 │
-│  "Log mistakes to gotchas.md"                       │
-│  → Claude follows these. Usually. Hopefully.        │
-├─────────────────────────────────────────────────────┤
-│  Hooks (mechanical enforcement)                     │
-│  protect-files  → BLOCKED. Period.                   │
-│  stop-verify    → tsc fails? Can't stop. Period.     │
-│  post-edit      → Formatted. Linted. Every time.     │
-│  → These fire whether Claude wants them to or not.  │
-└─────────────────────────────────────────────────────┘
-```
-
-## Known Limitations
-
-We believe in documenting what doesn't work, not hiding it.
-
-- **Bash bypass:** `echo secret > .env` via Bash bypasses protect-files. Use Claude Code's built-in [permission deny rules](https://code.claude.com/docs/en/hooks-guide) for shell safety.
-- **Strict infra is opt-in:** `.husky/` and `.github/workflows/` are only blocked when installed with `--strict-infra` or when `CLAWBACK_STRICT_INFRA_PROTECTION=1` is set for the hook.
-- **UI guard is heuristic:** `--with-ui-guard` emits additional context for common TSX layout/input mistakes, not a formal compiler check.
-- **Windows notifications:** Console bell only. No desktop toast. (PRs welcome.)
-- **Anti-sprawl:** "Max 5 files per response" is CLAUDE.md guidance, not a hook. The hooks API has no concept of response boundaries.
-- **Large TypeScript:** `tsc` timeout is 60s. Projects over 100k LOC may need incremental builds.
-- **TS 5.0-5.1 monorepos:** `tsc --build --noEmit` not supported in these versions. Upgrade to 5.2+.
-
 ## Testing
 
 ```bash
-npm test    # 52 tests, zero dependencies
+npm test    # 59 tests, zero dependencies
 ```
 
 For Codex installs, the generated global hook file can also be checked directly:
@@ -235,16 +208,16 @@ For Codex installs, the generated global hook file can also be checked directly:
 node ~/.codex/hooks/verify-global-hooks.cjs
 ```
 
-## Reviewed to Death
+## Reviewed to death
 
-This project went through **9 rounds of adversarial design review** before a single line of code was written. The implementation plan was then reviewed through **4 more rounds** of code-level attack. Every finding was fixed. The final review returned: *"No further issues."*
+This project went through **9 rounds of adversarial design review** before a single line of code was written, then **4 more rounds** of code-level attack on the implementation plan. Every finding was fixed. The final review returned: *"No further issues."*
 
 [Full design spec](docs/superpowers/specs/2026-04-02-clawback-design.md) | [Implementation plan](docs/superpowers/plans/2026-04-02-clawback.md)
 
 ## Related
 
-- **[production-verify](https://github.com/LZong-tw/production-verify)** -- Production verification framework (smoke tests + architecture proofs)
-- **[Claude Code Hooks Guide](https://code.claude.com/docs/en/hooks-guide)** -- Official hooks documentation
+- **[production-verify](https://github.com/LZong-tw/production-verify)** — Production verification framework (smoke tests + architecture proofs)
+- **[Claude Code Hooks Guide](https://code.claude.com/docs/en/hooks-guide)** — Official hooks documentation
 
 ## Contributing
 
@@ -252,11 +225,11 @@ PRs welcome. The architecture is designed for contribution:
 
 - **New language support?** Edit `lib/detect-stack.cjs` only. No hook changes needed.
 - **New hook?** Add to `hooks/`, register in `install.cjs`. Existing hooks untouched.
-- **Bug fix?** 51 tests protect you from regressions.
+- **Bug fix?** 59 tests protect you from regressions.
 
 ## Author
 
-**[LZong](https://github.com/LZong-tw)** -- DevOps engineer. Building tools that make AI coding actually reliable.
+**[LZong](https://github.com/LZong-tw)** — DevOps engineer. Building tools that make AI coding actually reliable.
 
 ## License
 

@@ -85,13 +85,27 @@ async function main() {
     }
   }
 
-  // Output
+  // Output — PostToolUse context injection must be nested in hookSpecificOutput.
+  // A bare top-level additionalContext is not read by Claude Code for this event.
   if (messages.length > 0) {
-    const output = { additionalContext: messages.join('\n\n') };
-    process.stdout.write(JSON.stringify(output));
+    process.stdout.write(JSON.stringify(buildContextOutput(messages.join('\n\n'), input.hook_event_name)));
   }
 
   process.exit(0);
 }
 
-main();
+function buildContextOutput(additionalContext, eventName) {
+  return {
+    hookSpecificOutput: {
+      hookEventName: eventName || 'PostToolUse',
+      additionalContext,
+    },
+  };
+}
+
+// Only auto-run when invoked directly as a hook (not when required by tests).
+if (require.main === module) {
+  main();
+}
+
+module.exports = { buildContextOutput };

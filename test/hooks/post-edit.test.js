@@ -36,4 +36,21 @@ describe('post-edit', () => {
     });
     assert.equal(exitCode, 0);
   });
+
+  describe('output schema', () => {
+    it('nests additionalContext inside hookSpecificOutput for PostToolUse', () => {
+      const { buildContextOutput } = require('../../hooks/post-edit.cjs');
+      const out = buildContextOutput('[LINT ERRORS]\nsomething', 'PostToolUse');
+      assert.equal(out.hookSpecificOutput?.hookEventName, 'PostToolUse');
+      assert.equal(out.hookSpecificOutput?.additionalContext, '[LINT ERRORS]\nsomething');
+      // PostToolUse ignores a bare top-level additionalContext — it must be nested.
+      assert.equal(out.additionalContext, undefined);
+    });
+
+    it('defaults hookEventName to PostToolUse when none is provided', () => {
+      const { buildContextOutput } = require('../../hooks/post-edit.cjs');
+      const out = buildContextOutput('msg');
+      assert.equal(out.hookSpecificOutput?.hookEventName, 'PostToolUse');
+    });
+  });
 });

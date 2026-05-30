@@ -51,8 +51,8 @@ would all write it the same way, that's the way.
 ## Self-Improvement
 
 ### Mistake Logging
-After ANY correction from the user, log the pattern to gotchas.md. The PostCompact
-hook re-injects gotchas.md after context compaction, so lessons persist.
+After ANY correction from the user, log the pattern to gotchas.md. The reinject hook
+re-injects gotchas.md on session start (including after compaction), so lessons persist.
 
 ### Edit Safety
 When renaming anything, search separately for: direct calls, type-level references,
