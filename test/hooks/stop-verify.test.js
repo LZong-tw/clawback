@@ -6,8 +6,25 @@ const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
 const { runHook, parseHookOutput } = require('../helpers');
+const { blockStop } = require('../../hooks/stop-verify.cjs');
 
 const CACHE_DIR = path.join(os.tmpdir(), 'clawback');
+
+// Capture whatever blockStop writes to stdout, return parsed JSON.
+function captureBlockStop(reason) {
+  const original = process.stdout.write;
+  let captured = '';
+  process.stdout.write = (chunk) => {
+    captured += chunk.toString();
+    return true;
+  };
+  try {
+    blockStop(reason);
+  } finally {
+    process.stdout.write = original;
+  }
+  return JSON.parse(captured);
+}
 
 describe('stop-verify', () => {
   beforeEach(() => {
@@ -30,8 +47,8 @@ describe('stop-verify', () => {
     });
     assert.equal(exitCode, 0);
     const output = parseHookOutput(stdout);
-    // Should allow stop without checking
-    assert.ok(!output || !output.hookSpecificOutput?.decision);
+    // Should allow stop without checking — no top-level block decision.
+    assert.ok(!output || output.decision !== 'block');
   });
 
   it('exits 0 when no stack detected', () => {
@@ -57,6 +74,22 @@ describe('stop-verify', () => {
     });
     assert.equal(exitCode, 0);
     const output = parseHookOutput(stdout);
-    assert.ok(output?.additionalContext?.includes('Circuit breaker'));
+    assert.ok(output?.systemMessage?.includes('Circuit breaker'));
+  });
+
+  describe('blockStop schema', () => {
+    it('emits top-level decision:block with reason containing the error text', () => {
+      const errorText = '[TYPECHECK ERRORS]\nsrc/app.ts(1,1): error TS2304: Cannot find name';
+      const output = captureBlockStop(errorText);
+      assert.equal(output.decision, 'block');
+      assert.equal(output.reason, errorText);
+      assert.ok(output.reason.includes('error TS2304'));
+    });
+
+    it('does NOT nest decision inside hookSpecificOutput and emits no additionalContext', () => {
+      const output = captureBlockStop('some error');
+      assert.equal(output.hookSpecificOutput, undefined);
+      assert.equal(output.additionalContext, undefined);
+    });
   });
 });

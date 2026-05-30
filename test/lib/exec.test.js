@@ -18,6 +18,28 @@ describe('safeExec', () => {
     );
   });
 
+  it('marks a missing binary as skipped on win32 / ENOENT on posix', () => {
+    assert.throws(
+      () => safeExec('nonexistent-binary-xyz', ['--version']),
+      (err) => {
+        if (process.platform === 'win32') {
+          return err instanceof ClawbackExecError && err.skipped === true;
+        }
+        return err.code === 'ENOENT';
+      }
+    );
+  });
+
+  it('does not misclassify a present tool whose output contains "cannot find" as missing', () => {
+    // tsc emits "Cannot find name/module" for real type errors. A present tool
+    // that fails must surface its real error, never get skipped as missing.
+    const fixtureFile = path.join(__dirname, '..', 'fixtures', 'cannot-find.js');
+    assert.throws(
+      () => safeExec('node', [fixtureFile]),
+      (err) => err.skipped !== true && err.status === 2
+    );
+  });
+
   it('throws on timeout', () => {
     // On Windows, use a safe file path without parentheses/braces for shell:true
     const fixtureFile = path.join(__dirname, '..', 'fixtures', 'timeout.js');
