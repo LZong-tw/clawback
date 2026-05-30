@@ -40,6 +40,12 @@ function buildHooksConfig(hooksDir, extras = [], options = {}) {
   };
   const protectArgs = options.strictInfra ? ['--strict-infra'] : [];
   const includeNotification = options.includeNotification !== false;
+  // Claude Code's PostCompact is side-effect-only (no additionalContext), so the
+  // context reinject hook must run on SessionStart, which fires on every session
+  // start including after compaction and DOES support additionalContext. Codex's
+  // PostCompact consumes the injected output, so Codex passes
+  // useSessionStartReinject:false to keep PostCompact.
+  const useSessionStartReinject = options.useSessionStartReinject !== false;
 
   const config = {
     PreToolUse: [
@@ -59,12 +65,16 @@ function buildHooksConfig(hooksDir, extras = [], options = {}) {
         hooks: [{ type: 'command', command: nodeCmd('stop-verify.cjs') }],
       },
     ],
-    PostCompact: [
-      {
-        hooks: [{ type: 'command', command: nodeCmd('post-compact-reinject.cjs') }],
-      },
-    ],
   };
+
+  // Reinject git state + gotchas.md. SessionStart (no matcher) covers all
+  // sources: startup | resume | clear | compact.
+  const reinjectEntry = { hooks: [{ type: 'command', command: nodeCmd('post-compact-reinject.cjs') }] };
+  if (useSessionStartReinject) {
+    config.SessionStart = [reinjectEntry];
+  } else {
+    config.PostCompact = [reinjectEntry];
+  }
 
   if (includeNotification) {
     config.Notification = [
@@ -274,6 +284,7 @@ function install(options = {}) {
     const codexHooksConfig = buildHooksConfig(codexHooksDir, extras, {
       strictInfra: Boolean(options.strictInfra),
       includeNotification: false,
+      useSessionStartReinject: false,
     });
     const mergedCodexHooks = mergeSettings(existingCodexHooks, codexHooksConfig);
     writeJsonFileAtomic(codexHooksPath, mergedCodexHooks);

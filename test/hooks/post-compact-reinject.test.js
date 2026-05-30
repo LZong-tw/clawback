@@ -53,4 +53,26 @@ describe('post-compact-reinject', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('emits SessionStart context output (all-source reinjection)', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clawback-test-'));
+    try {
+      execFileSync('git', ['init'], { cwd: tmpDir, stdio: 'ignore' });
+      fs.writeFileSync(path.join(tmpDir, 'gotchas.md'), '- keep the lesson\n');
+
+      const { exitCode, stdout } = runHook('hooks/post-compact-reinject.cjs', {
+        hook_event_name: 'SessionStart',
+        source: 'compact',
+        cwd: tmpDir,
+      }, { CLAUDE_PROJECT_DIR: tmpDir });
+
+      assert.equal(exitCode, 0);
+      const output = parseHookOutput(stdout);
+      assert.equal(output?.hookSpecificOutput?.hookEventName, 'SessionStart');
+      assert.match(output?.hookSpecificOutput?.additionalContext || '', /\[GOTCHAS/);
+      assert.equal(output?.additionalContext, undefined);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

@@ -70,20 +70,20 @@ function shellCheck(scriptPath, shell) {
   });
 }
 
-function smokePostCompact(command) {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clawback-postcompact-'));
+function smokeReinject(command, eventName) {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clawback-reinject-'));
   try {
     try {
       execFileSync('git', ['init'], { cwd: tmpDir, stdio: 'pipe', timeout: 15000 });
     } catch (error) {
-      fail(`cannot initialize temp git repo for PostCompact smoke: ${(error.stderr || error.message).toString().trim()}`);
+      fail(`cannot initialize temp git repo for ${eventName} smoke: ${(error.stderr || error.message).toString().trim()}`);
       return;
     }
 
     fs.writeFileSync(path.join(tmpDir, 'gotchas.md'), '- verify PostCompact output shape\n');
     const input = JSON.stringify({
       session_id: 'clawback-verify',
-      hook_event_name: 'PostCompact',
+      hook_event_name: eventName,
       cwd: tmpDir,
     });
     const result = spawnSync(command, {
@@ -95,13 +95,13 @@ function smokePostCompact(command) {
     });
 
     if (result.status !== 0 || result.signal) {
-      fail(`PostCompact smoke exited ${result.status ?? result.signal}: ${(result.stderr || result.error || '').toString().trim()}`);
+      fail(`${eventName} smoke exited ${result.status ?? result.signal}: ${(result.stderr || result.error || '').toString().trim()}`);
       return;
     }
 
     const stdout = (result.stdout || '').trim();
     if (!stdout) {
-      fail('PostCompact smoke produced no JSON output');
+      fail(`${eventName} smoke produced no JSON output`);
       return;
     }
 
@@ -109,13 +109,13 @@ function smokePostCompact(command) {
     try {
       parsed = JSON.parse(stdout);
     } catch (error) {
-      fail(`PostCompact smoke produced invalid JSON: ${error.message}`);
+      fail(`${eventName} smoke produced invalid JSON: ${error.message}`);
       return;
     }
 
     const output = parsed.hookSpecificOutput;
-    if (output?.hookEventName !== 'PostCompact' || typeof output.additionalContext !== 'string') {
-      fail('PostCompact smoke must emit hookSpecificOutput with hookEventName=PostCompact and additionalContext');
+    if (output?.hookEventName !== eventName || typeof output.additionalContext !== 'string') {
+      fail(`${eventName} smoke must emit hookSpecificOutput with hookEventName=${eventName} and additionalContext`);
     }
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
@@ -171,7 +171,8 @@ for (const command of commands) {
   }
 
   if (command.includes('post-compact-reinject')) {
-    smokePostCompact(command);
+    smokeReinject(command, 'PostCompact');
+    smokeReinject(command, 'SessionStart');
   }
 }
 

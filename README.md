@@ -30,7 +30,7 @@ with shell-safe command quoting:
 | **protect-files** | PreToolUse | Blocks edits to `.env`, lockfiles, `.git/` -- before Claude touches them |
 | **post-edit** | PostToolUse | Formats your code, then lints it (report-only) -- after every edit |
 | **stop-verify** | Stop | Runs full typecheck + lint -- Claude can't say "Done!" until it passes |
-| **post-compact** | PostCompact | Re-injects git state + `gotchas.md` after context compaction |
+| **post-compact** | SessionStart | Re-injects git state + `gotchas.md` on every session start, including after compaction (Codex: PostCompact) |
 | **notification** | Notification | Desktop notification when Claude needs your attention |
 
 Plus a behavioral CLAUDE.md that handles what hooks can't: phased execution, anti-sprawl limits, mistake logging.
@@ -123,8 +123,8 @@ node install.cjs --with-codex
 - Appends behavioral guidance to `~/.claude/CLAUDE.md` (preserves your existing rules)
 - With `--with-codex`, copies the same hooks to `~/.codex/hooks/`, merges
   `~/.codex/hooks.json`, and installs `verify-global-hooks.cjs` to regression-test
-  Windows `cmd.exe`, PowerShell, POSIX-shell-safe command quoting, and
-  Codex-compatible `PostCompact` JSON output.
+  Windows `cmd.exe`, PowerShell, POSIX-shell-safe command quoting, and the reinject hook's injection output. On Claude Code the reinject hook runs on `SessionStart`;
+  on Codex it runs on `PostCompact`.
 
 ### Uninstall
 
@@ -186,7 +186,7 @@ Your local overrides take priority over built-in detection.
 ├── protect-files.cjs           ← PreToolUse (Edit|Write)
 ├── post-edit.cjs               ← PostToolUse (Edit|Write)
 ├── stop-verify.cjs             ← Stop (circuit breaker)
-├── post-compact-reinject.cjs   ← PostCompact
+├── post-compact-reinject.cjs   ← SessionStart (Claude) / PostCompact (Codex)
 ├── notification.cjs            ← Notification
 ├── guard-read.cjs              ← optional PreToolUse (Read)
 ├── ui-antipattern-check.mjs    ← optional PostToolUse (Edit|Write)

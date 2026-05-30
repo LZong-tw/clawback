@@ -39,7 +39,13 @@ describe('install', () => {
     assert.ok(settings.hooks.PreToolUse);
     assert.ok(settings.hooks.PostToolUse);
     assert.ok(settings.hooks.Stop);
-    assert.ok(settings.hooks.PostCompact);
+    assert.ok(settings.hooks.SessionStart);
+    // Reinject must be wired to SessionStart — PostCompact cannot inject on Claude Code.
+    const sessionStartCommands = settings.hooks.SessionStart
+      .flatMap(entry => entry.hooks || [])
+      .map(hook => hook.command);
+    assert.ok(sessionStartCommands.some(c => c.includes('post-compact-reinject.cjs')));
+    assert.equal(settings.hooks.PostCompact, undefined);
     assert.ok(settings.hooks.Notification);
   });
 
@@ -127,6 +133,9 @@ describe('install', () => {
 
     assert.ok(commands.some(command => command.includes('protect-files.cjs')));
     assert.ok(commands.some(command => command.includes('ui-antipattern-check.mjs')));
+    assert.ok(commands.some(command => command.includes('post-compact-reinject.cjs')));
+    assert.ok(codexHooks.hooks.PostCompact, 'Codex keeps PostCompact for reinject');
+    assert.equal(codexHooks.hooks.SessionStart, undefined, 'Codex install does not add SessionStart');
     assert.ok(commands.every(command => command.startsWith('node "')));
     assert.ok(commands.every(command => !command.includes("node '")));
     assert.ok(commands.every(command => !/\b[A-Za-z_][A-Za-z0-9_]*=.*\s+node\b/.test(command)));
