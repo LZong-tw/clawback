@@ -75,4 +75,34 @@ describe('post-compact-reinject', () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it('reinjects AirClaude route context from environment metadata', () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'clawback-airclaude-test-'));
+    try {
+      const { exitCode, stdout } = runHook('hooks/post-compact-reinject.cjs', {
+        hook_event_name: 'SessionStart',
+        cwd: tmpDir,
+      }, {
+        CLAUDE_PROJECT_DIR: tmpDir,
+        AIRCLAUDE_PROFILE: 'demo-lowcost',
+        AIRCLAUDE_MODE: 'pro',
+        AIRCLAUDE_STATUSLINE_LABEL: 'airclaude pro strong-coder',
+        AIRCLAUDE_ROUTE_DEFAULT: 'demo,strong-coder',
+        AIRCLAUDE_ROUTE_THINK: 'demo,strong-coder',
+        AIRCLAUDE_ROUTE_LONG_CONTEXT: 'demo,strong-coder',
+        AIRCLAUDE_RESTORE_MODEL: 'claude-sonnet-4-6',
+      });
+      const output = parseHookOutput(stdout);
+
+      assert.equal(exitCode, 0);
+      assert.equal(output?.hookSpecificOutput?.hookEventName, 'SessionStart');
+      const context = output?.hookSpecificOutput?.additionalContext || '';
+      assert.match(context, /\[AIRCLAUDE SESSION\]/);
+      assert.match(context, /Mode: pro/);
+      assert.match(context, /Default route: demo,strong-coder/);
+      assert.match(context, /Claude-compatible restore model: claude-sonnet-4-6/);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
 });

@@ -5,7 +5,7 @@ const path = require('node:path');
 const os = require('node:os');
 
 const CACHE_DIR = path.join(os.tmpdir(), 'clawback');
-const BUDGET = { gitState: 4096, gotchas: 4096, total: 10240 };
+const BUDGET = { airclaude: 2048, gitState: 4096, gotchas: 4096, total: 10240 };
 
 let _safeExec;
 function getSafeExec() {
@@ -36,6 +36,22 @@ function truncateWithSummary(text, limit, label) {
   const truncatedBytes = text.length - result.length;
   result += `\n[${label}: ${included}/${lines.length} lines, ${truncatedBytes} bytes truncated]\n`;
   return result;
+}
+
+function airclaudeSessionContext(env = process.env) {
+  if (!env.AIRCLAUDE_PROFILE && !env.AIRCLAUDE_MODE && !env.AIRCLAUDE_ROUTE_DEFAULT) return '';
+
+  return [
+    '[AIRCLAUDE SESSION]',
+    `Profile: ${env.AIRCLAUDE_PROFILE || 'unknown'}`,
+    `Mode: ${env.AIRCLAUDE_MODE || 'unknown'}`,
+    `Statusline label: ${env.AIRCLAUDE_STATUSLINE_LABEL || 'unknown'}`,
+    `Default route: ${env.AIRCLAUDE_ROUTE_DEFAULT || 'unset'}`,
+    `Think route: ${env.AIRCLAUDE_ROUTE_THINK || 'unset'}`,
+    `Long-context route: ${env.AIRCLAUDE_ROUTE_LONG_CONTEXT || 'unset'}`,
+    `Claude-compatible restore model: ${env.AIRCLAUDE_RESTORE_MODEL || 'unset'}`,
+    'Keep the provider route separate from the Claude-compatible displayed/restored model after compaction.',
+  ].join('\n');
 }
 
 /**
@@ -72,6 +88,11 @@ async function main() {
   const cwd = (process.env.CLAUDE_PROJECT_DIR || '').trim() || input.cwd || process.cwd();
   const safeExec = getSafeExec();
   const sections = [];
+
+  const airclaudeContext = airclaudeSessionContext();
+  if (airclaudeContext) {
+    sections.push(truncateWithSummary(airclaudeContext, BUDGET.airclaude, 'airclaude context'));
+  }
 
   // --- Git state (all git calls via safeExec, invariant #2) ---
   try {
@@ -148,5 +169,5 @@ async function main() {
 if (require.main === module) {
   main();
 } else {
-  module.exports = { truncateWithSummary };
+  module.exports = { truncateWithSummary, airclaudeSessionContext };
 }
